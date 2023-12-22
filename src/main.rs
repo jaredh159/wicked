@@ -1,20 +1,14 @@
-use std::fs::File;
-use std::io::{self, BufRead};
+mod db;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-  for domain in domains() {
-    println!("domain is: {}", domain);
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+  dotenv::dotenv().ok();
+  let cmd = std::env::args().nth(1);
+
+  if cmd == Some(String::from("db:reset")) {
+    let client = db::connect().await?;
+    db::reset(&client, db::Conf { limit: 50_000, offset: 200_000_000 }).await?;
   }
-  Ok(())
-}
 
-fn domains() -> impl Iterator<Item = String> {
-  let file = File::open("/Users/jared/Desktop/com.txt").unwrap();
-  let lines = io::BufReader::new(file).lines();
-  lines
-    .into_iter()
-    .skip(1)
-    .take(5)
-    .map(|result| result.unwrap())
-    .map(|line| line.split_whitespace().take(1).collect::<String>())
+  Ok(())
 }
