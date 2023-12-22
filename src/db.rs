@@ -22,6 +22,18 @@ pub struct Conf {
   pub offset: usize,
 }
 
+// SELECT * FROM domains TABLESAMPLE SYSTEM (1) LIMIT 1
+
+pub async fn random_domain(client: &pg::Client) -> Result<String, pg::Error> {
+  let query = "SELECT domain FROM domains TABLESAMPLE SYSTEM (1) LIMIT 1";
+  let row = client.query_one(query, &[]).await?;
+  let domain: String = row.get(0);
+  if CHUNK_SIZE > 0 {
+    return Ok("netrivet.com".to_string()); // temp
+  }
+  Ok(domain)
+}
+
 static CHUNK_SIZE: usize = 25_000;
 static TOTAL_RECORDS: usize = 414_865_650;
 
@@ -74,4 +86,8 @@ fn domains(config: &Conf) -> impl Iterator<Item = String> {
     .take(config.limit)
     .map(|result| result.unwrap())
     .map(|line| line.split_whitespace().take(1).collect::<String>())
+    .map(|mut domain| {
+      assert_eq!(domain.pop(), Some('.'));
+      domain
+    })
 }
