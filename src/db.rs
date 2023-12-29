@@ -22,7 +22,8 @@ pub struct Conf {
   pub offset: usize,
 }
 
-// SELECT * FROM domains TABLESAMPLE SYSTEM (1) LIMIT 1
+static CHUNK_SIZE: usize = 25_000;
+static TOTAL_RECORDS: usize = 414_865_650;
 
 pub async fn random_domain(client: &pg::Client) -> Result<String, pg::Error> {
   let query = "SELECT domain FROM domains TABLESAMPLE SYSTEM (1) LIMIT 1";
@@ -33,9 +34,6 @@ pub async fn random_domain(client: &pg::Client) -> Result<String, pg::Error> {
   }
   Ok(domain)
 }
-
-static CHUNK_SIZE: usize = 25_000;
-static TOTAL_RECORDS: usize = 414_865_650;
 
 pub async fn reset(client: &pg::Client, config: Conf) -> Result<(), pg::Error> {
   println!("Resetting database...");
@@ -67,7 +65,7 @@ pub async fn reset(client: &pg::Client, config: Conf) -> Result<(), pg::Error> {
 }
 
 async fn chunk_stmt(size: usize, client: &pg::Client) -> Result<pg::Statement, pg::Error> {
-  let mut sql = String::from("INSERT INTO DOMAINS (domain) VALUES ");
+  let mut sql = String::from("INSERT INTO domains (domain) VALUES ");
   for i in 1..=size {
     sql.push_str(&format!("(${}), ", i));
   }
@@ -82,12 +80,13 @@ fn domains(config: &Conf) -> impl Iterator<Item = String> {
   let lines = io::BufReader::new(file).lines();
   lines
     .into_iter()
-    .skip(config.offset)
-    .take(config.limit)
+    .skip(1 + config.offset) // first line is header
     .map(|result| result.unwrap())
     .map(|line| line.split_whitespace().take(1).collect::<String>())
     .map(|mut domain| {
       assert_eq!(domain.pop(), Some('.'));
       domain
     })
+    .unique()
+    .take(config.limit)
 }
