@@ -1,9 +1,14 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
+use tokio::sync::Mutex;
+
+use std::sync::Arc;
+
 mod bootstrap;
 mod check;
 mod db;
+mod exec;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 
@@ -26,6 +31,7 @@ async fn main() -> Result<(), Error> {
 
   match cmd.as_str() {
     "bootstrap" => bootstrap::run(&client).await?,
+    "exec" => exec::run(Arc::new(Mutex::new(client))).await?,
     _ => panic!("unknown command: `{}`", cmd),
   }
   Ok(())
