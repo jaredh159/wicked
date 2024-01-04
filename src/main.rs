@@ -9,6 +9,7 @@ mod bootstrap;
 mod check;
 mod db;
 mod exec;
+mod stream;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 
