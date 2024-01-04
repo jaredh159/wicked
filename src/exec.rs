@@ -1,17 +1,18 @@
-use std::sync::atomic::{AtomicU32, Ordering};
-use std::sync::Arc;
+// use std::sync::atomic::{AtomicU32, Ordering};
+// use std::sync::Arc;
 
-use futures::StreamExt;
-use tokio::sync::Mutex;
-use tokio_postgres::Client;
+// use futures::StreamExt;
+// use tokio::sync::Mutex;
+// use tokio_postgres::Client;
 
-use super::db;
-use super::stream;
-use super::Error;
+// use super::db;
+// use super::stream;
+// use super::Error;
+use crate::internal::*;
 
 const PARALLELISM: u32 = 10;
 
-pub async fn run(shared_client: Arc<Mutex<Client>>) -> Result<(), Error> {
+pub async fn run(shared_client: Arc<Mutex<Client>>) -> Result<()> {
   static NUM_COMPLETED: AtomicU32 = AtomicU32::new(0);
   let total = 167_300_740; // todo: pass
   let sample_size: u32 = 10_000; // todo: pass
@@ -26,7 +27,7 @@ pub async fn run(shared_client: Arc<Mutex<Client>>) -> Result<(), Error> {
   NUM_COMPLETED.store(db_count, Ordering::Relaxed);
 
   let tasks = stream::until_completed(sample_size, &NUM_COMPLETED)
-    .map(|_| {
+    .map(|()| {
       tokio::spawn({
         let client = shared_client.clone();
         async move {

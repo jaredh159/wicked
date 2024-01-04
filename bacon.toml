@@ -12,10 +12,7 @@ command = ["cargo", "check", "--all-targets", "--color", "always"]
 need_stdout = false
 
 [jobs.clippy]
-command = [
-  "cargo", "clippy", "--all-targets", "--color", "always", "--",
-  "-Wclippy::pedantic", "-Wclippy::nursery","-Aclippy::future-not-send"
-]
+command = ["cargo", "clippy", "--all-targets", "--color", "always"]
 need_stdout = false
 
 # - all tests: bacon test
@@ -29,7 +26,7 @@ need_stdout = true
 [jobs.domain-safe]
 command = [
   "cargo", "run", "--color", "always",
-  "--", "check-domain", "netrivet.com"
+  "--", "check-domain", "friendslibrary.com"
 ]
 need_stdout = true
 allow_warnings = true

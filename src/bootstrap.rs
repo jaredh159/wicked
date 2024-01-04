@@ -1,12 +1,6 @@
-use std::fs::File;
-use std::io::{self, BufRead};
+use crate::internal::*;
 
-use itertools::Itertools;
-use tokio_postgres as pg;
-
-use super::Error;
-
-pub async fn run(client: &pg::Client) -> Result<(), Error> {
+pub async fn run(client: &Client) -> Result<()> {
   println!("Bootstrapping database...");
   client.execute(DROP_DOMAINS_TABLE_SQL, &[]).await?;
   client.execute(CREATE_DOMAINS_TABLE_SQL, &[]).await?;
@@ -37,14 +31,14 @@ pub async fn run(client: &pg::Client) -> Result<(), Error> {
   Ok(())
 }
 
-async fn chunk_stmt(size: usize, client: &pg::Client) -> Result<pg::Statement, pg::Error> {
+async fn chunk_stmt(size: usize, client: &Client) -> Result<Statement> {
   let mut sql = String::from("INSERT INTO domains (domain) VALUES ");
   for i in 1..=size {
     sql.push_str(&format!("(${i}), "));
   }
   sql.pop();
   sql.pop();
-  client.prepare(&sql).await
+  client.prepare(&sql).await.map_err(Into::into)
 }
 
 fn raw_domains_iter() -> impl Iterator<Item = String> {
@@ -55,7 +49,7 @@ fn raw_domains_iter() -> impl Iterator<Item = String> {
   lines
     .into_iter()
     .skip(1) // first line is header
-    .map(Result::unwrap)
+    .map(StdResult::unwrap)
     .map(|line| line.split_whitespace().take(1).collect::<String>())
     .map(|mut domain| {
       assert_eq!(domain.pop(), Some('.'));

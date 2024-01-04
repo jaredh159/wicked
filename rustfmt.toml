@@ -1,3 +1,4 @@
 edition = "2021"
 tab_spaces = 2
 struct_lit_width = 36
+max_width = 90

@@ -1,26 +1,21 @@
-#![allow(dead_code)]
-#![allow(unused_variables)]
-
-use tokio::sync::Mutex;
-
-use std::sync::Arc;
-
 mod bootstrap;
 mod check;
 mod db;
 mod exec;
 mod html;
+mod internal;
 mod stream;
 
-type Error = Box<dyn std::error::Error + Send + Sync>;
+use internal::*;
 
 #[tokio::main]
-async fn main() -> Result<(), Error> {
+async fn main() -> Result<()> {
   dotenv::dotenv().ok();
 
-  let cmd = std::env::args()
-    .nth(1)
-    .expect("missing required [cmd] arg (bootstrap|exec)");
+  let mut args = std::env::args().skip(1);
+  let cmd = args
+    .next()
+    .expect("missing required [cmd] arg (bootstrap|exec|check-domain)");
 
   let client = db::connect().await?;
 
@@ -28,10 +23,8 @@ async fn main() -> Result<(), Error> {
     "bootstrap" => bootstrap::run(&client).await?,
     "exec" => exec::run(Arc::new(Mutex::new(client))).await?,
     "check-domain" => {
-      let domain = std::env::args()
-        .next()
-        .expect("missing required [domain] arg");
-      let result = check::domain(&domain, &client).await;
+      let domain = args.next().expect("missing required [domain] arg");
+      let result = check::domain(&domain, &client).await?;
       println!("\nresult: {result}");
     }
     _ => panic!("unknown command: `{cmd}`"),

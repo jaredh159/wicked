@@ -1,20 +1,11 @@
-use std::sync::Arc;
-
-use rand::Rng;
-use tokio::sync::Mutex;
-use tokio_postgres::{Client, NoTls};
-
-use super::Error;
+use crate::internal::*;
 
 fn random_u32(max: u32) -> u32 {
   let mut rng = rand::thread_rng();
   rng.gen_range(0..max)
 }
 
-pub async fn random_unchecked_domain(
-  client: Arc<Mutex<Client>>,
-  total: u32,
-) -> Result<String, Error> {
+pub async fn random_unchecked_domain(client: Arc<Mutex<Client>>, total: u32) -> Result<String> {
   for _ in 0..500 {
     let random_number = random_u32(total);
     let query = format!("SELECT domain FROM domains WHERE id = {random_number}");
@@ -37,7 +28,7 @@ pub async fn random_unchecked_domain(
   Err("Failed to find unchecked domain after 500 attempts, likely few/none left to check".into())
 }
 
-pub async fn connect() -> Result<Client, Error> {
+pub async fn connect() -> Result<Client> {
   let url = std::env::var("DATABASE_URL").unwrap();
   let (client, connection) = tokio_postgres::connect(url.as_ref(), NoTls).await?;
   tokio::spawn(async move {
