@@ -1,0 +1,39 @@
+# Complete help on configuration: https://dystroy.org/bacon/config/
+# Example: https://github.com/Canop/bacon/blob/main/bacon.toml
+
+default_job = "check"
+
+[jobs.check]
+command = ["cargo", "check", "--color", "always"]
+need_stdout = false
+
+[jobs.check-all]
+command = ["cargo", "check", "--all-targets", "--color", "always"]
+need_stdout = false
+
+[jobs.clippy]
+command = [
+  "cargo", "clippy", "--all-targets", "--color", "always", "--",
+  "-Wclippy::pedantic", "-Wclippy::nursery","-Aclippy::future-not-send"
+]
+need_stdout = false
+
+# - all tests: bacon test
+# - a specific test: bacon test -- config::test_default_files
+# - the tests of a package: bacon test -- -- -p config
+[jobs.test]
+command = ["cargo", "test", "--color", "always", "--", "--color", "always"]
+need_stdout = true
+
+# Call it as `bacon domain-safe`
+[jobs.domain-safe]
+command = [
+  "cargo", "run", "--color", "always",
+  "--", "check-domain", "netrivet.com"
+]
+need_stdout = true
+allow_warnings = true
+
+[keybindings]
+s = "job:domain-safe"
+# alt-m = "job:my-job"

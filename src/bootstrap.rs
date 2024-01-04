@@ -40,7 +40,7 @@ pub async fn run(client: &pg::Client) -> Result<(), Error> {
 async fn chunk_stmt(size: usize, client: &pg::Client) -> Result<pg::Statement, pg::Error> {
   let mut sql = String::from("INSERT INTO domains (domain) VALUES ");
   for i in 1..=size {
-    sql.push_str(&format!("(${}), ", i));
+    sql.push_str(&format!("(${i}), "));
   }
   sql.pop();
   sql.pop();
@@ -55,7 +55,7 @@ fn raw_domains_iter() -> impl Iterator<Item = String> {
   lines
     .into_iter()
     .skip(1) // first line is header
-    .map(|result| result.unwrap())
+    .map(Result::unwrap)
     .map(|line| line.split_whitespace().take(1).collect::<String>())
     .map(|mut domain| {
       assert_eq!(domain.pop(), Some('.'));

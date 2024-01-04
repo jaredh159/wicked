@@ -9,13 +9,13 @@ use super::db;
 use super::stream;
 use super::Error;
 
-const PARALLELISM: usize = 10;
+const PARALLELISM: u32 = 10;
 
 pub async fn run(shared_client: Arc<Mutex<Client>>) -> Result<(), Error> {
   static NUM_COMPLETED: AtomicU32 = AtomicU32::new(0);
   let total = 167_300_740; // todo: pass
   let sample_size: u32 = 10_000; // todo: pass
-  assert!(sample_size > PARALLELISM as u32);
+  assert!(sample_size > PARALLELISM);
 
   let client = shared_client.clone();
   let client = client.lock().await;
@@ -30,22 +30,22 @@ pub async fn run(shared_client: Arc<Mutex<Client>>) -> Result<(), Error> {
       tokio::spawn({
         let client = shared_client.clone();
         async move {
-          if NUM_COMPLETED.load(Ordering::Relaxed) >= (sample_size - PARALLELISM as u32 + 1) {
+          if NUM_COMPLETED.load(Ordering::Relaxed) >= (sample_size - PARALLELISM + 1) {
             return Ok::<(), Error>(());
           }
 
           let domain = db::random_unchecked_domain(client.clone(), total).await?;
-          println!("checking: {}", domain);
+          println!("checking: {domain}");
           NUM_COMPLETED.fetch_add(1, Ordering::Relaxed);
           Ok(())
         }
       })
     })
-    .buffer_unordered(PARALLELISM);
+    .buffer_unordered(PARALLELISM as usize);
 
   tasks.collect::<Vec<_>>().await;
   let final_count = NUM_COMPLETED.load(Ordering::Acquire);
-  println!("final count: {}", final_count);
+  println!("final count: {final_count}");
   Ok(())
 }
 
