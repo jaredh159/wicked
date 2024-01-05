@@ -20,18 +20,9 @@ pub async fn domain(domain: &str, client: &Client) -> Result<DomainResult> {
   }
 
   let body = response.text().await?;
-  match tl::parse(&body, ParserOptions::default()) {
-    Ok(dom) => {
-      let content = html::dom::content(&dom);
-      // _ = content.collect::<Vec<_>>();
-      println!("content: {:#?}", content.collect::<Vec<_>>());
-    }
-    Err(err) => todo!("handle err"),
-  }
-  // let content = html::content(&body);
+  let content = html::dom::content(&body);
+  println!("content: {:#?}", content);
 
-  // let dom = tl::parse(&body, ParserOptions::default()).unwrap();
-  // let parser = dom.parser();
   Ok(DomainResult { is_porn: false })
 }
 

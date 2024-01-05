@@ -1,78 +1,82 @@
-use crate::internal::*;
-//   nodes_to_skip += 1;
+use html5ever::tendril::TendrilSink;
+use html5ever::{local_name, parse_document, Attribute, ParseOpts};
+use markup5ever_rcdom::{Handle, NodeData, RcDom};
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum Content<'a> {
-  Title(Cow<'a, str>),
-  H1(Cow<'a, str>),
-  ImgSrc(Cow<'a, str>),
-  Text(Cow<'a, str>),
+pub enum Content {
+  Title(String),
+  H1(String),
+  ImgSrc(String),
+  Text(String),
 }
 
-pub fn content<'a>(dom: &'a VDom<'a>) -> impl Iterator<Item = Content<'a>> + 'a {
-  ContentIter { dom, nodes: dom.nodes() }
+// pub fn content<'a>(dom: &'a VDom<'a>) -> impl Iterator<Item = Content<'a>> + 'a {
+pub fn content(html: &str) -> Vec<Content> {
+  let dom = parse_document(RcDom::default(), ParseOpts::default())
+    .from_utf8()
+    .read_from(&mut html.as_bytes())
+    .unwrap();
+
+  let mut content = Vec::new();
+  walk(&dom.document, &mut content);
+  content
 }
 
-struct ContentIter<'a> {
-  dom: &'a VDom<'a>,
-  nodes: &'a [Node<'a>],
-}
-
-impl<'a> ContentIter<'a> {
-  fn remove_first(&mut self) {
-    if !self.nodes.is_empty() {
-      self.nodes = &self.nodes[1..];
-    }
-  }
-}
-
-impl<'a> Iterator for ContentIter<'a> {
-  type Item = Content<'a>;
-  fn next(&mut self) -> Option<Self::Item> {
-    loop {
-      let node = self.nodes.first()?;
-      self.nodes = &self.nodes[1..];
-      match node {
-        Node::Tag(tag) => match tag.name().as_utf8_str().as_ref() {
-          "title" => {
-            let title = tag.inner_text(self.dom.parser());
-            self.remove_first();
-            return Some(Content::Title(title));
-          }
-          "h1" => {
-            let h1 = tag.inner_text(self.dom.parser());
-            let inner_html = tag.inner_html(self.dom.parser());
-            let nodes_to_skip = tl::parse(&inner_html, ParserOptions::default())
-              .map_or(1, |dom| dom.nodes().len());
-            for _ in 0..nodes_to_skip {
-              self.remove_first();
-            }
-            return Some(Content::H1(h1));
-          }
-          "img" => {
-            if let Some(src) = tag.attributes().get("src").flatten() {
-              return Some(Content::ImgSrc(src.as_utf8_str()));
-            }
-          }
-          "style" | "script" => self.remove_first(),
-          tagname => {
-            if tag.children().top().len() == 1 {
-              // let text = tag.inner_text(self.dom.parser());
-              // self.remove_first();
-              // return Some(Content::Text(text));
-            }
-          }
-        },
-        Node::Raw(raw) => {
-          let text = raw.as_utf8_str();
-          let trimmed = text.trim();
-          if !trimmed.is_empty() {
-            return Some(Content::Text(trimmed.to_string().into()));
+fn walk(node: &Handle, content: &mut Vec<Content>) {
+  match node.data {
+    NodeData::Element { ref name, ref attrs, .. } => match name.local {
+      local_name!("title") => {
+        let mut title = String::new();
+        for child in node.children.borrow().iter() {
+          if let NodeData::Text { ref contents } = child.data {
+            let text = contents.borrow();
+            title.push_str(&text);
           }
         }
-        Node::Comment(_) => {}
+        content.push(Content::Title(title));
+        return;
+      }
+      local_name!("h1") => {
+        let mut h1_content = Vec::new();
+        for child in node.children.borrow().iter() {
+          walk(child, &mut h1_content);
+        }
+        let h1 = h1_content
+          .iter()
+          .filter_map(|c| match c {
+            Content::Text(t) => Some(t.clone()),
+            _ => None,
+          })
+          .collect::<Vec<_>>()
+          .join(" ");
+        content.push(Content::H1(h1));
+        return;
+      }
+      local_name!("style") | local_name!("script") | local_name!("noscript") => {
+        return;
+      }
+      local_name!("img") => {
+        if let Some(Attribute { value, .. }) = attrs
+          .borrow()
+          .iter()
+          .find(|a| a.name.local == local_name!("src"))
+        {
+          content.push(Content::ImgSrc(value.escape_default().to_string()));
+        }
+        return;
+      }
+      _ => {}
+    },
+    NodeData::Text { ref contents } => {
+      let text = contents.borrow();
+      if !text.trim().is_empty() {
+        content.push(Content::Text(text.trim().escape_default().to_string()));
       }
     }
+    _ => {}
+  }
+  for child in node.children.borrow().iter() {
+    walk(child, content);
   }
 }
 
@@ -101,9 +105,7 @@ mod test {
           <img src="https://example.com/image.png" />
         </body>
       "#;
-    let dom = tl::parse(input, ParserOptions::default()).unwrap();
-    let content = content(&dom).collect::<Vec<_>>();
-    // eprintln!();
+    let content = content(input);
     assert_eq!(
       content,
       vec![

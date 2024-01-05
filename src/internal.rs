@@ -1,7 +1,6 @@
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
 pub type Result<T> = std::result::Result<T, Error>;
 
-pub use std::borrow::Cow;
 pub use std::convert::Into;
 pub use std::fmt;
 pub use std::fs::File;
@@ -15,7 +14,6 @@ pub use std::task::{Context, Poll};
 pub use futures::{Stream, StreamExt};
 pub use itertools::Itertools;
 pub use rand::Rng;
-pub use tl::{self, Node, ParserOptions, VDom};
 pub use tokio::sync::Mutex;
 pub use tokio_postgres::{Client, NoTls, Statement};
 
