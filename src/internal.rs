@@ -1,6 +1,5 @@
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
 pub type Result<T> = std::result::Result<T, Error>;
-pub type WordSpec = Vec<(String, Regex, u32)>;
 
 pub use std::convert::Into;
 pub use std::fmt;
@@ -21,6 +20,8 @@ pub use reqwest::Client as HttpClient;
 pub use tokio::sync::Mutex;
 pub use tokio_postgres::{Client as DbClient, NoTls, Statement};
 
+pub use crate::spec::Config;
+
 pub mod db {
   pub use crate::db::*;
 }
@@ -30,8 +31,10 @@ pub mod stream {
 pub mod html {
   pub use crate::html::*;
 }
-pub mod utils {
-  pub use crate::utils::*;
+
+#[cfg(test)] // temp
+pub mod spec {
+  pub use crate::spec::*;
 }
 
 #[derive(Debug)]

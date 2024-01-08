@@ -22,10 +22,10 @@ pub enum DomainResult {
   Tested(TestResult),
 }
 
-pub async fn domain(domain: &str, http: &HttpClient) -> DomainResult {
+pub async fn domain(domain: &str, words: &Config, http: &HttpClient) -> DomainResult {
   let prefixes = ["https://www.", "https://", "http://www.", "http://"];
   for prefix in &prefixes {
-    match domain_impl(domain, prefix, http).await {
+    match domain_impl(domain, prefix, words, http).await {
       DomainResult::Unreachable => continue,
       DomainResult::Parked => return DomainResult::Parked,
       DomainResult::Tested(result) => return DomainResult::Tested(result),
@@ -34,7 +34,12 @@ pub async fn domain(domain: &str, http: &HttpClient) -> DomainResult {
   DomainResult::Unreachable
 }
 
-pub async fn domain_impl(domain: &str, prefix: &str, http: &HttpClient) -> DomainResult {
+pub async fn domain_impl(
+  domain: &str,
+  prefix: &str,
+  words: &Config,
+  http: &HttpClient,
+) -> DomainResult {
   let url = format!("{prefix}{domain}");
 
   let Ok(response) = http.get(&url).send().await else {
