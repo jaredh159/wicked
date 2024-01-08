@@ -26,3 +26,26 @@ pub mod stream {
 pub mod html {
   pub use crate::html::*;
 }
+
+#[derive(Debug)]
+pub struct WickedError {
+  pub message: String,
+}
+
+impl WickedError {
+  pub fn new(message: &str) -> Self {
+    Self { message: message.to_string() }
+  }
+}
+
+impl fmt::Display for WickedError {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "WickedError: {}", self.message)
+  }
+}
+
+impl std::error::Error for WickedError {}
+
+pub fn e(message: impl Into<String>) -> Error {
+  Box::new(WickedError { message: message.into() })
+}

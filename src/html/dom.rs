@@ -10,7 +10,6 @@ pub enum Content {
   Text(String),
 }
 
-// pub fn content<'a>(dom: &'a VDom<'a>) -> impl Iterator<Item = Content<'a>> + 'a {
 pub fn content(html: &str) -> Vec<Content> {
   let dom = parse_document(RcDom::default(), ParseOpts::default())
     .from_utf8()

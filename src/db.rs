@@ -5,7 +5,10 @@ fn random_u32(max: u32) -> u32 {
   rng.gen_range(0..max)
 }
 
-pub async fn random_unchecked_domain(client: Arc<Mutex<Client>>, total: u32) -> Result<String> {
+pub async fn random_unchecked_domain(
+  client: Arc<Mutex<Client>>,
+  total: u32,
+) -> Result<String> {
   for _ in 0..500 {
     let random_number = random_u32(total);
     let query = format!("SELECT domain FROM domains WHERE id = {random_number}");
@@ -22,10 +25,10 @@ pub async fn random_unchecked_domain(client: Arc<Mutex<Client>>, total: u32) -> 
     drop(guard);
 
     if rows.is_empty() {
-      return Ok(domain); // already checked
+      return Ok(domain); // haven't already checked
     }
   }
-  Err("Failed to find unchecked domain after 500 attempts, likely few/none left to check".into())
+  Err("Failed to find unchecked domain in 500 attempts, likely none left to check".into())
 }
 
 pub async fn connect() -> Result<Client> {

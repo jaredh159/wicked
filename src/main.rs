@@ -24,7 +24,7 @@ async fn main() -> Result<()> {
     "exec" => exec::run(Arc::new(Mutex::new(client))).await?,
     "check-domain" => {
       let domain = args.next().expect("missing required [domain] arg");
-      let result = check::domain(&domain, &client).await?;
+      let result = check::domain(&domain, &client).await;
       println!("\nresult: {result}");
     }
     _ => panic!("unknown command: `{cmd}`"),
