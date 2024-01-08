@@ -1,0 +1,16 @@
+{
+  "name": "wicked",
+  "module": "index.ts",
+  "type": "module",
+  "devDependencies": {
+    "bun-types": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@tensorflow/tfjs-node": "^4.15.0",
+    "fastify": "^4.25.2",
+    "nsfwjs": "^2.4.2"
+  }
+}
