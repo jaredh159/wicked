@@ -1,23 +1,23 @@
 use crate::internal::*;
 
-pub async fn run(client: &Client) -> Result<()> {
+pub async fn run(db: &DbClient) -> Result<()> {
   println!("Bootstrapping database...");
-  client.execute(DROP_DOMAINS_TABLE_SQL, &[]).await?;
-  client.execute(CREATE_DOMAINS_TABLE_SQL, &[]).await?;
-  client.execute(DROP_CHECKED_TABLE_SQL, &[]).await?;
-  client.execute(CREATE_CHECKED_TABLE_SQL, &[]).await?;
+  db.execute(DROP_DOMAINS_TABLE_SQL, &[]).await?;
+  db.execute(CREATE_DOMAINS_TABLE_SQL, &[]).await?;
+  db.execute(DROP_CHECKED_TABLE_SQL, &[]).await?;
+  db.execute(CREATE_CHECKED_TABLE_SQL, &[]).await?;
 
-  let fullsize_insert = chunk_stmt(CHUNK_SIZE, client).await?;
+  let fullsize_insert = chunk_stmt(CHUNK_SIZE, db).await?;
   let mut count = 0;
   let domain_iter = raw_domains_iter();
   for chunk in &domain_iter.into_iter().chunks(CHUNK_SIZE) {
     let params = chunk.collect::<Vec<String>>();
     if params.len() < CHUNK_SIZE {
-      let remaining_insert = chunk_stmt(params.len(), client).await?;
+      let remaining_insert = chunk_stmt(params.len(), db).await?;
       count += params.len();
-      client.query_raw(&remaining_insert, params).await?;
+      db.query_raw(&remaining_insert, params).await?;
     } else {
-      client.query_raw(&fullsize_insert, params).await?;
+      db.query_raw(&fullsize_insert, params).await?;
       count += CHUNK_SIZE;
     }
     eprintln!("-> inserted {} domains...", en_us_separated_num(count));
@@ -31,14 +31,14 @@ pub async fn run(client: &Client) -> Result<()> {
   Ok(())
 }
 
-async fn chunk_stmt(size: usize, client: &Client) -> Result<Statement> {
+async fn chunk_stmt(size: usize, db: &DbClient) -> Result<Statement> {
   let mut sql = String::from("INSERT INTO domains (domain) VALUES ");
   for i in 1..=size {
     sql.push_str(&format!("(${i}), "));
   }
   sql.pop();
   sql.pop();
-  client.prepare(&sql).await.map_err(Into::into)
+  db.prepare(&sql).await.map_err(Into::into)
 }
 
 fn raw_domains_iter() -> impl Iterator<Item = String> {

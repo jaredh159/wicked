@@ -1,13 +1,9 @@
-use std::time::Duration;
-
 use crate::internal::*;
+
+mod words;
 
 // reqwest docs: https://docs.rs/reqwest/0.10.7/reqwest/
 // async process: https://docs.rs/async-process/latest/async_process/struct.Command.html
-
-// unreachable
-// parked
-// tested (subdomain, word score, image score, is_porn)
 
 #[derive(Debug)]
 pub struct TestResult {
@@ -26,10 +22,10 @@ pub enum DomainResult {
   Tested(TestResult),
 }
 
-pub async fn domain(domain: &str, client: &Client) -> DomainResult {
+pub async fn domain(domain: &str, http: &HttpClient) -> DomainResult {
   let prefixes = ["https://www.", "https://", "http://www.", "http://"];
   for prefix in &prefixes {
-    match domain_impl(domain, client, prefix).await {
+    match domain_impl(domain, prefix, http).await {
       DomainResult::Unreachable => continue,
       DomainResult::Parked => return DomainResult::Parked,
       DomainResult::Tested(result) => return DomainResult::Tested(result),
@@ -38,30 +34,28 @@ pub async fn domain(domain: &str, client: &Client) -> DomainResult {
   DomainResult::Unreachable
 }
 
-pub async fn domain_impl(domain: &str, client: &Client, prefix: &str) -> DomainResult {
+pub async fn domain_impl(domain: &str, prefix: &str, http: &HttpClient) -> DomainResult {
   let url = format!("{prefix}{domain}");
-  let client = reqwest::Client::builder()
-    .user_agent(USER_AGENT)
-    .redirect(reqwest::redirect::Policy::none())
-    .timeout(Duration::from_secs(3))
-    .build()
-    .unwrap();
 
-  let Ok(response) = client.get(&url).send().await else {
+  let Ok(response) = http.get(&url).send().await else {
+    println!("Http request to `{url}` failed with error");
     return DomainResult::Unreachable;
   };
 
   if !response.status().is_success() {
-    println!("Request failed: {url}");
+    println!(
+      "Http request failed to `{url}` failed w/ status code {}",
+      response.status()
+    );
     return DomainResult::Unreachable;
   }
 
   let Ok(body) = response.text().await else {
+    println!("Http request failed to `{url}` failed to parse body into text");
     return DomainResult::Unreachable;
   };
 
-  let content = html::dom::content(&body);
-  // // println!("content: {:#?}", content);
+  let content = html::content(&body);
 
   DomainResult::Tested(TestResult {
     is_porn: false,
@@ -82,5 +76,3 @@ impl fmt::Display for DomainResult {
     }
   }
 }
-
-const USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";

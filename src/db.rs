@@ -6,7 +6,7 @@ fn random_u32(max: u32) -> u32 {
 }
 
 pub async fn random_unchecked_domain(
-  client: Arc<Mutex<Client>>,
+  client: Arc<Mutex<DbClient>>,
   total: u32,
 ) -> Result<String> {
   for _ in 0..500 {
@@ -31,7 +31,7 @@ pub async fn random_unchecked_domain(
   Err("Failed to find unchecked domain in 500 attempts, likely none left to check".into())
 }
 
-pub async fn connect() -> Result<Client> {
+pub async fn connect() -> Result<DbClient> {
   let url = std::env::var("DATABASE_URL").unwrap();
   let (client, connection) = tokio_postgres::connect(url.as_ref(), NoTls).await?;
   tokio::spawn(async move {
