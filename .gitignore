@@ -2,4 +2,5 @@
 /target
 .env
 words.json
+node_modules
 
