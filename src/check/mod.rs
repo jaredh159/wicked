@@ -1,5 +1,6 @@
 use crate::internal::*;
 
+pub mod images;
 mod words;
 
 // reqwest docs: https://docs.rs/reqwest/0.10.7/reqwest/
@@ -9,10 +10,21 @@ mod words;
 pub struct TestResult {
   pub is_porn: bool,
   pub prefix: String,
-  pub word_score: u32,
-  pub num_total_images: u32,
-  pub num_images_tested: u32,
-  pub image_scores: Vec<u32>,
+  pub word_score: usize,
+  pub num_total_images: usize,
+  pub num_images_tested: usize,
+}
+
+impl TestResult {
+  pub fn new(prefix: &str) -> Self {
+    Self {
+      is_porn: false,
+      prefix: prefix.to_string(),
+      word_score: 0,
+      num_total_images: 0,
+      num_images_tested: 0,
+    }
+  }
 }
 
 #[derive(Debug)]
@@ -22,10 +34,10 @@ pub enum DomainResult {
   Tested(TestResult),
 }
 
-pub async fn domain(domain: &str, words: &Config, http: &HttpClient) -> DomainResult {
+pub async fn domain(domain: &str, conf: &Config, http: &HttpClient) -> DomainResult {
   let prefixes = ["https://www.", "https://", "http://www.", "http://"];
   for prefix in &prefixes {
-    match domain_impl(domain, prefix, words, http).await {
+    match domain_impl(domain, prefix, conf, http).await {
       DomainResult::Unreachable => continue,
       DomainResult::Parked => return DomainResult::Parked,
       DomainResult::Tested(result) => return DomainResult::Tested(result),
@@ -48,10 +60,6 @@ pub async fn domain_impl(
   };
 
   if !response.status().is_success() {
-    println!(
-      "Http request failed to `{url}` failed w/ status code {}",
-      response.status()
-    );
     return DomainResult::Unreachable;
   }
 
@@ -62,14 +70,15 @@ pub async fn domain_impl(
 
   let content = html::content(&body);
 
-  DomainResult::Tested(TestResult {
-    is_porn: false,
-    prefix: prefix.to_string(),
-    word_score: 0,
-    num_total_images: 0,
-    num_images_tested: 0,
-    image_scores: vec![],
-  })
+  let mut result = TestResult::new(prefix);
+  result.word_score = words::check(&content, words);
+  if result.word_score > 250 {
+    result.is_porn = true;
+  } else if result.word_score > 25 {
+    images::check(&url, &content, http, &mut result).await;
+  }
+
+  DomainResult::Tested(result)
 }
 
 impl fmt::Display for DomainResult {

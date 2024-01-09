@@ -1,6 +1,7 @@
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
 pub type Result<T> = std::result::Result<T, Error>;
 
+pub use std::borrow::Cow;
 pub use std::convert::Into;
 pub use std::fmt;
 pub use std::fs::File;
@@ -17,10 +18,13 @@ pub use itertools::Itertools;
 pub use rand::Rng;
 pub use regex::Regex;
 pub use reqwest::Client as HttpClient;
+pub use serde::Deserialize;
 pub use tokio::sync::Mutex;
 pub use tokio_postgres::{Client as DbClient, NoTls, Statement};
+pub use uuid::Uuid;
 
-pub use crate::spec::Config;
+pub use crate::check::TestResult;
+pub use crate::config::Config;
 
 pub mod db {
   pub use crate::db::*;
@@ -32,12 +36,6 @@ pub mod html {
   pub use crate::html::*;
 }
 
-#[cfg(test)] // temp
-pub mod spec {
-  pub use crate::spec::*;
-}
-
-#[derive(Debug)]
 pub struct WickedError {
   pub message: String,
 }
@@ -50,7 +48,13 @@ impl WickedError {
 
 impl fmt::Display for WickedError {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    write!(f, "WickedError: {}", self.message)
+    write!(f, "{}", self.message)
+  }
+}
+
+impl fmt::Debug for WickedError {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{}", self)
   }
 }
 

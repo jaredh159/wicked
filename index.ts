@@ -44,7 +44,7 @@ async function main(): Promise<void> {
 
   try {
     await app.listen({ port: 8484 });
-    process.stdout.write(`Listening on port 8484\n`);
+    process.stdout.write(`Image classification server listening on port 8484\n`);
   } catch (err) {
     process.exit(1);
   }

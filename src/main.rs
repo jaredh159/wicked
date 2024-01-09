@@ -1,10 +1,11 @@
 mod bootstrap;
 mod check;
+mod config;
 mod db;
 mod exec;
 mod html;
 mod internal;
-mod spec;
+mod prereqs;
 mod stream;
 
 use internal::*;
@@ -20,18 +21,27 @@ async fn main() -> Result<()> {
 
   let db_client = db::connect().await?;
   let http_client = build_http_client();
-  let word_spec = spec::load();
+  let config = config::load();
 
   match cmd.as_str() {
     "bootstrap" => bootstrap::run(&db_client).await?,
-    "exec" => exec::run(Arc::new(Mutex::new(db_client))).await?,
+    "exec" => {
+      prereqs::check()?;
+      let mut server_proc = check::images::start_server()?;
+      exec::run(Arc::new(Mutex::new(db_client))).await?;
+      server_proc.kill()?;
+    }
     "check-domain" => {
+      prereqs::check()?;
+      let mut server_proc = check::images::start_server()?;
       let domain = args.next().expect("missing required [domain] arg");
-      let result = check::domain(&domain, &word_spec, &http_client).await;
+      let result = check::domain(&domain, &config, &http_client).await;
+      server_proc.kill()?;
       println!("\nresult: {result}");
     }
     _ => panic!("unknown command: `{cmd}`"),
   }
+
   Ok(())
 }
 

@@ -7,7 +7,9 @@ pub enum Content {
   Title(String),
   H1(String),
   ImgSrc(String),
+  ImgAlt(String),
   Text(String),
+  LinkTitle(String),
 }
 
 pub fn content(html: &str) -> Vec<Content> {
@@ -54,6 +56,15 @@ fn walk(node: &Handle, content: &mut Vec<Content>) {
       local_name!("style") | local_name!("script") | local_name!("noscript") => {
         return;
       }
+      local_name!("a") => {
+        if let Some(Attribute { value, .. }) = attrs
+          .borrow()
+          .iter()
+          .find(|a| a.name.local == local_name!("title"))
+        {
+          content.push(Content::LinkTitle(value.escape_default().to_string()));
+        }
+      }
       local_name!("img") => {
         if let Some(Attribute { value, .. }) = attrs
           .borrow()
@@ -61,6 +72,13 @@ fn walk(node: &Handle, content: &mut Vec<Content>) {
           .find(|a| a.name.local == local_name!("src"))
         {
           content.push(Content::ImgSrc(value.escape_default().to_string()));
+        }
+        if let Some(Attribute { value, .. }) = attrs
+          .borrow()
+          .iter()
+          .find(|a| a.name.local == local_name!("alt"))
+        {
+          content.push(Content::ImgAlt(value.escape_default().to_string()));
         }
         return;
       }
@@ -101,7 +119,8 @@ mod test {
             Rando text
             <span>In Span</span>
           </div>
-          <img src="https://example.com/image.png" />
+          <a href="https://example.com" title="lol">link</a>
+          <img src="https://example.com/image.png" alt="goats" />
         </body>
       "#;
     let content = content(input);
@@ -115,7 +134,10 @@ mod test {
         Content::Text("My P Text".into()),
         Content::Text("Rando text".into()),
         Content::Text("In Span".into()),
+        Content::LinkTitle("lol".into()),
+        Content::Text("link".into()),
         Content::ImgSrc("https://example.com/image.png".into()),
+        Content::ImgAlt("goats".into()),
       ]
     );
   }

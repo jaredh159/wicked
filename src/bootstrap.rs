@@ -58,14 +58,6 @@ fn raw_domains_iter() -> impl Iterator<Item = String> {
     .unique()
 }
 
-fn env_paths() -> (String, String) {
-  let input_path = std::env::var("RAW_DOMAINS_FILEPATH")
-    .expect("missing required env var: `RAW_DOMAINS_FILEPATH`");
-  let output_path = std::env::var("UNIQUE_DOMAINS_FILEPATH")
-    .expect("missing required env var: `UNIQUE_DOMAINS_FILEPATH`");
-  (input_path, output_path)
-}
-
 fn en_us_separated_num(i: usize) -> String {
   let mut s = String::new();
   let i_str = i.to_string();

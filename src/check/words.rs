@@ -7,6 +7,10 @@ pub fn check(content: &[html::Content], conf: &Config) -> usize {
         html::Content::Title(s) => weighted(s, &conf.words, conf.title_tag_multiplier),
         html::Content::H1(s) => weighted(s, &conf.words, conf.h1_tag_multiplier),
         html::Content::Text(s) => weighted(s, &conf.words, conf.other_text_multiplier),
+        html::Content::ImgAlt(s) => weighted(s, &conf.words, conf.img_tag_alt_multiplier),
+        html::Content::LinkTitle(s) => {
+          weighted(s, &conf.words, conf.link_title_multiplier)
+        }
         html::Content::ImgSrc(_) => 0,
       }
   })
@@ -74,14 +78,15 @@ mod test {
     ];
 
     for (content, spec, expected) in cases {
-      // let actual = check(&content, &spec::map_regex(spec));
       let actual = check(
         &content,
         &Config {
           title_tag_multiplier: 5,
           h1_tag_multiplier: 2,
+          img_tag_alt_multiplier: 2,
           other_text_multiplier: 1,
-          words: spec::map_regex(spec),
+          link_title_multiplier: 1,
+          words: crate::config::map_regex(spec),
         },
       );
       assert_eq!(actual, expected);

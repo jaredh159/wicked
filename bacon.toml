@@ -31,6 +31,12 @@ command = [
 need_stdout = true
 allow_warnings = true
 
+[jobs.noarg-main]
+command = ["cargo", "run", "--color", "always"]
+need_stdout = true
+allow_warnings = true
+
 [keybindings]
 s = "job:domain-safe"
+m = "job:noarg-main"
 # alt-m = "job:my-job"
