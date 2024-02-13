@@ -106,3 +106,11 @@ pub fn start_server() -> Result<std::process::Child> {
   std::thread::sleep(Duration::from_millis(500)); // todo, more for prod
   Ok(proc)
 }
+
+pub fn cleanup(mut server_proc: std::process::Child) -> Result<()> {
+  std::fs::remove_dir_all("images")?;
+  std::fs::create_dir("images")?;
+  std::fs::write("images/.gitkeep", "")?;
+  server_proc.kill()?;
+  Ok(())
+}

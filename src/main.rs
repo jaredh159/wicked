@@ -27,16 +27,16 @@ async fn main() -> Result<()> {
     "bootstrap" => bootstrap::run(&db_client).await?,
     "exec" => {
       prereqs::check()?;
-      let mut server_proc = check::images::start_server()?;
+      let server_proc = check::images::start_server()?;
       exec::run(Arc::new(Mutex::new(db_client))).await?;
-      server_proc.kill()?;
+      check::images::cleanup(server_proc)?;
     }
     "check-domain" => {
       prereqs::check()?;
-      let mut server_proc = check::images::start_server()?;
       let domain = args.next().expect("missing required [domain] arg");
+      let server_proc = check::images::start_server()?;
       let result = check::domain(&domain, &config, &http_client).await;
-      server_proc.kill()?;
+      check::images::cleanup(server_proc)?;
       println!("\nresult: {result}");
     }
     _ => panic!("unknown command: `{cmd}`"),
