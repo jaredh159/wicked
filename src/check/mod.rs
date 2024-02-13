@@ -74,10 +74,9 @@ pub async fn domain_impl(
   result.word_score = words::check(&content, words);
   if result.word_score > 250 {
     result.is_porn = true;
-  } else if result.word_score > 25 {
-    images::check(&url, &content, http, &mut result).await;
+    return DomainResult::Tested(result);
   }
-
+  images::check(&url, &content, http, &mut result).await;
   DomainResult::Tested(result)
 }
 

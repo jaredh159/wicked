@@ -53,7 +53,7 @@ async function main(): Promise<void> {
 main();
 
 async function getBuffer(filename: string): Promise<Buffer | undefined> {
-  const filepath = `./${filename}`;
+  const filepath = `./images/${filename}`;
   try {
     const exists = await fs.exists(filepath);
     if (!exists) throw new Error();

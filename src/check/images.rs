@@ -12,17 +12,18 @@ pub async fn check(
   });
   result.num_total_images = all_srcs.clone().unique().count();
 
-  let non_gifs = all_srcs
-    .filter(|src| !src.contains(".gif"))
+  let filtered_srcs = all_srcs
+    .filter(|src| !src.contains(".gif") && !src.contains(".svg"))
     .unique()
     .map(|src| absolute_url(base_url, src));
 
   let mut num_sexy_imgs = 0;
   let mut num_porn_imgs = 0;
-  for url in non_gifs {
+
+  for url in filtered_srcs {
     result.num_images_tested += 1;
     let Ok(response) = http.get(url.as_ref()).send().await else {
-      println!("Http request to `{url}` failed with error");
+      println!("http request to `{url}` failed with error");
       continue;
     };
 
@@ -35,7 +36,8 @@ pub async fn check(
     };
 
     let filename = format!("{}.dat", Uuid::new_v4());
-    if std::fs::write(&filename, bytes).is_err() {
+    let filepath = format!("images/{filename}");
+    if std::fs::write(&filepath, bytes).is_err() {
       println!("Failed to write image from url {} to disk", url);
       continue;
     }
@@ -48,17 +50,18 @@ pub async fn check(
       }
       if num_porn_imgs > 1 || num_sexy_imgs > 3 {
         result.is_porn = true;
+        let _ = std::fs::remove_file(&filepath);
         return;
       }
     };
-    let _ = std::fs::remove_file(&filename);
+    let _ = std::fs::remove_file(&filepath);
   }
 }
 
 async fn classify(filename: &str, http: &HttpClient) -> Option<Classification> {
   let url = format!("http://localhost:8484/{}", filename);
   let Ok(response) = http.get(&url).send().await else {
-    println!("Http request to `{url}` failed with error");
+    println!("http request to `{url}` failed with error");
     return None;
   };
 

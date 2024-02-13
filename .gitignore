@@ -1,5 +1,6 @@
 .DS_Store
 /target
+/images/*.dat
 .env
 words.json
 node_modules

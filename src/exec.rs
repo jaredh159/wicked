@@ -1,13 +1,3 @@
-// use std::sync::atomic::{AtomicU32, Ordering};
-// use std::sync::Arc;
-
-// use futures::StreamExt;
-// use tokio::sync::Mutex;
-// use tokio_postgres::Client;
-
-// use super::db;
-// use super::stream;
-// use super::Error;
 use crate::internal::*;
 
 const PARALLELISM: u32 = 10;
