@@ -35,8 +35,8 @@ pub async fn connect() -> Result<DbClient> {
   let url = std::env::var("DATABASE_URL").unwrap();
   let (client, connection) = tokio_postgres::connect(url.as_ref(), NoTls).await?;
   tokio::spawn(async move {
-    if let Err(e) = connection.await {
-      eprintln!("connection error: {e}");
+    if let Err(error) = connection.await {
+      log::error!("postgres connection error: {error}");
     }
   });
   Ok(client)

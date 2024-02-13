@@ -55,28 +55,35 @@ pub async fn domain_impl(
   let url = format!("{prefix}{domain}");
 
   let Ok(response) = http.get(&url).send().await else {
-    println!("Http request to `{url}` failed with error");
+    log::trace!("GET failed `{url}`: http error - UNREACHABLE");
     return DomainResult::Unreachable;
   };
 
   if !response.status().is_success() {
+    log::trace!(
+      "GET failed `{url}`: status={} - UNREACHABLE",
+      response.status()
+    );
     return DomainResult::Unreachable;
   }
 
   let Ok(body) = response.text().await else {
-    println!("Http request failed to `{url}` failed to parse body into text");
+    log::error!("GET  fail`{url}`: error getting response text - UNREACHABLE");
     return DomainResult::Unreachable;
   };
 
+  log::trace!("GET success `{url}` body length={}", body.len());
   let content = html::content(&body);
 
   let mut result = TestResult::new(prefix);
   result.word_score = words::check(&content, words);
   if result.word_score > 250 {
+    log::info!("site {url} found to be PORN by WORDS check");
     result.is_porn = true;
     return DomainResult::Tested(result);
   }
   images::check(&url, &content, http, &mut result).await;
+  log::trace!("finished checking {url}, porn={}", result.is_porn);
   DomainResult::Tested(result)
 }
 

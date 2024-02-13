@@ -13,8 +13,10 @@ pub use std::sync::Arc;
 pub use std::task::{Context, Poll};
 pub use std::time::Duration;
 
+pub use env_logger::Env;
 pub use futures::{Stream, StreamExt};
 pub use itertools::Itertools;
+pub use log;
 pub use rand::Rng;
 pub use regex::Regex;
 pub use reqwest::Client as HttpClient;

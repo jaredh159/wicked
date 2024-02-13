@@ -23,32 +23,42 @@ pub async fn check(
   for url in filtered_srcs {
     result.num_images_tested += 1;
     let Ok(response) = http.get(url.as_ref()).send().await else {
-      println!("http request to `{url}` failed with error");
+      log::error!("http request to `{url}` failed with error");
       continue;
     };
 
     if !response.status().is_success() {
+      log::debug!(
+        "download req to `{url}` failed with status {}",
+        response.status()
+      );
       continue;
     }
 
     let Ok(bytes) = response.bytes().await else {
+      log::error!("failed to read bytes from response to `{url}`");
       continue;
     };
 
     let filename = format!("{}.dat", Uuid::new_v4());
     let filepath = format!("images/{filename}");
     if std::fs::write(&filepath, bytes).is_err() {
-      println!("Failed to write image from url {} to disk", url);
+      log::error!("failed to write image from url {url} to disk");
       continue;
     }
 
     if let Some(Classification { porn, hentai, sexy }) = classify(&filename, http).await {
       if porn > 0.85 || hentai > 0.85 {
+        log::debug!("image found to be PORN: {url}");
         num_porn_imgs += 1;
       } else if sexy > 0.9 {
+        log::debug!("image found to be SEXY: {url}");
         num_sexy_imgs += 1;
+      } else {
+        log::trace!("image found to be SAFE: {url}");
       }
       if num_porn_imgs > 1 || num_sexy_imgs > 3 {
+        log::info!("site found to be PORN by IMAGE check: {base_url}");
         result.is_porn = true;
         let _ = std::fs::remove_file(&filepath);
         return;
@@ -56,12 +66,13 @@ pub async fn check(
     };
     let _ = std::fs::remove_file(&filepath);
   }
+  log::trace!("finished checking images at {base_url}");
 }
 
 async fn classify(filename: &str, http: &HttpClient) -> Option<Classification> {
   let url = format!("http://localhost:8484/{}", filename);
   let Ok(response) = http.get(&url).send().await else {
-    println!("http request to `{url}` failed with error");
+    log::error!("http request to `{url}` failed with error");
     return None;
   };
 
@@ -75,7 +86,7 @@ async fn classify(filename: &str, http: &HttpClient) -> Option<Classification> {
   match serde_json::from_slice(&bytes) {
     Ok(classification) => classification,
     Err(err) => {
-      println!("Failed to decode classification from response: {}", err);
+      log::error!("failed to decode classification from response: {}", err);
       None
     }
   }

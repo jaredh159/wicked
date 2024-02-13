@@ -1,7 +1,7 @@
 use crate::internal::*;
 
 pub async fn run(db: &DbClient) -> Result<()> {
-  println!("Bootstrapping database...");
+  log::info!("starting database bootstrap");
   db.execute(DROP_DOMAINS_TABLE_SQL, &[]).await?;
   db.execute(CREATE_DOMAINS_TABLE_SQL, &[]).await?;
   db.execute(DROP_CHECKED_TABLE_SQL, &[]).await?;
@@ -20,11 +20,11 @@ pub async fn run(db: &DbClient) -> Result<()> {
       db.query_raw(&fullsize_insert, params).await?;
       count += CHUNK_SIZE;
     }
-    eprintln!("-> inserted {} domains...", en_us_separated_num(count));
+    log::debug!(" -> inserted {} domains...", en_us_separated_num(count));
   }
 
-  println!(
-    "\n√ FINISHED: {} unique domains inserted\n",
+  log::info!(
+    "finished database boostrap: {} unique domains inserted",
     en_us_separated_num(count)
   );
 

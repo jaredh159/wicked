@@ -4,6 +4,7 @@ const PARALLELISM: u32 = 10;
 
 pub async fn run(shared_db: Arc<Mutex<DbClient>>) -> Result<()> {
   static NUM_COMPLETED: AtomicU32 = AtomicU32::new(0);
+  log::info!("starting exec::run()");
   let total = 167_300_740; // todo: pass
   let sample_size: u32 = 10_000; // todo: pass
   assert!(sample_size > PARALLELISM);
@@ -26,7 +27,7 @@ pub async fn run(shared_db: Arc<Mutex<DbClient>>) -> Result<()> {
           }
 
           let domain = db::random_unchecked_domain(client.clone(), total).await?;
-          println!("checking: {domain}");
+          log::debug!("checking domain: {domain}");
           NUM_COMPLETED.fetch_add(1, Ordering::Relaxed);
           Ok(())
         }
@@ -36,7 +37,7 @@ pub async fn run(shared_db: Arc<Mutex<DbClient>>) -> Result<()> {
 
   tasks.collect::<Vec<_>>().await;
   let final_count = NUM_COMPLETED.load(Ordering::Acquire);
-  println!("final count: {final_count}");
+  log::info!("finished exec::run(), domains tested: {final_count}");
   Ok(())
 }
 
