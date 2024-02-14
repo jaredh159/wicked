@@ -13,18 +13,24 @@ pub async fn check(
   result.num_total_images = all_srcs.clone().unique().count();
 
   let filtered_srcs = all_srcs
-    .filter(|src| !src.contains(".gif") && !src.contains(".svg"))
+    .filter(|src| {
+      !src.contains(".gif") && !src.contains(".svg") && !src.contains("data:")
+    })
     .unique()
     .map(|src| absolute_url(base_url, src));
 
   let mut num_sexy_imgs = 0;
   let mut num_porn_imgs = 0;
 
-  for url in filtered_srcs {
+  for url in filtered_srcs.take(50) {
     result.num_images_tested += 1;
-    let Ok(response) = http.get(url.as_ref()).send().await else {
-      log::error!("http request to `{url}` failed with error");
-      continue;
+
+    let response = match http.get(url.as_ref()).send().await {
+      Ok(response) => response,
+      Err(err) => {
+        log::warn!("http request to `{url}` failed with error={err}");
+        continue;
+      }
     };
 
     if !response.status().is_success() {
@@ -35,9 +41,12 @@ pub async fn check(
       continue;
     }
 
-    let Ok(bytes) = response.bytes().await else {
-      log::error!("failed to read bytes from response to `{url}`");
-      continue;
+    let bytes = match response.bytes().await {
+      Ok(bytes) => bytes,
+      Err(err) => {
+        log::error!("failed to read bytes from response to `{url}`: {err}");
+        continue;
+      }
     };
 
     let filename = format!("{}.dat", Uuid::new_v4());
@@ -49,22 +58,25 @@ pub async fn check(
 
     if let Some(Classification { porn, hentai, sexy }) = classify(&filename, http).await {
       if porn > 0.85 || hentai > 0.85 {
-        log::debug!("image found to be PORN: {url}");
+        log::info!("image found to be PORN: {url}");
         num_porn_imgs += 1;
       } else if sexy > 0.9 {
-        log::debug!("image found to be SEXY: {url}");
+        log::info!("image found to be SEXY: {url}");
         num_sexy_imgs += 1;
       } else {
         log::trace!("image found to be SAFE: {url}");
       }
-      if num_porn_imgs > 1 || num_sexy_imgs > 3 {
-        log::info!("site found to be PORN by IMAGE check: {base_url}");
+      if num_porn_imgs > 1
+        || num_sexy_imgs > 4
+        || (num_porn_imgs == 1 && num_sexy_imgs > 2)
+      {
+        log::error!("site found to be PORN by IMAGE check: {base_url}");
         result.is_porn = true;
-        let _ = std::fs::remove_file(&filepath);
+        _ = std::fs::remove_file(&filepath);
         return;
       }
     };
-    let _ = std::fs::remove_file(&filepath);
+    _ = std::fs::remove_file(&filepath);
   }
   log::trace!("finished checking images at {base_url}");
 }
@@ -102,6 +114,12 @@ struct Classification {
 fn absolute_url<'a>(base_url: &str, src: &'a str) -> Cow<'a, str> {
   if src.starts_with("http") {
     Cow::Borrowed(src)
+  } else if src.starts_with("//") {
+    if base_url.starts_with("https") {
+      Cow::Owned(format!("https:{}", src))
+    } else {
+      Cow::Owned(format!("http:{}", src))
+    }
   } else {
     let slash = if src.starts_with('/') { "" } else { "/" };
     Cow::Owned(format!("{}{}{}", base_url, slash, src))

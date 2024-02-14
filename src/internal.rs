@@ -14,7 +14,7 @@ pub use std::task::{Context, Poll};
 pub use std::time::Duration;
 
 pub use env_logger::Env;
-pub use futures::{Stream, StreamExt};
+pub use futures::{Future, Stream, StreamExt};
 pub use itertools::Itertools;
 pub use log;
 pub use rand::Rng;
@@ -25,7 +25,7 @@ pub use tokio::sync::Mutex;
 pub use tokio_postgres::{Client as DbClient, NoTls, Statement};
 pub use uuid::Uuid;
 
-pub use crate::check::TestResult;
+pub use crate::check::{DomainResult, TestResult};
 pub use crate::config::Config;
 
 pub mod db {
@@ -36,6 +36,10 @@ pub mod stream {
 }
 pub mod html {
   pub use crate::html::*;
+}
+
+pub mod check {
+  pub use crate::check::*;
 }
 
 pub struct WickedError {

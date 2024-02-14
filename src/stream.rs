@@ -2,15 +2,15 @@ use crate::internal::*;
 
 pub fn until_completed(
   required: u32,
-  completed: &AtomicU32,
+  reached: &AtomicU32,
 ) -> impl Stream<Item = ()> + '_ {
   UntilCompleteStream {
-    iter: UntilComplete { completed, required },
+    iter: UntilComplete { reached, required },
   }
 }
 
 struct UntilComplete<'a> {
-  completed: &'a AtomicU32,
+  reached: &'a AtomicU32,
   required: u32,
 }
 
@@ -18,7 +18,8 @@ impl<'a> Iterator for UntilComplete<'a> {
   type Item = ();
 
   fn next(&mut self) -> Option<Self::Item> {
-    if self.completed.load(Ordering::Relaxed) >= self.required {
+    if self.reached.load(Ordering::Relaxed) >= self.required {
+      log::info!("finish until_completed stream");
       return None;
     }
     Some(())

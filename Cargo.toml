@@ -32,4 +32,5 @@ future-not-send = "allow"
 uninlined-format-args = { level = "allow", priority = 1 }
 wildcard-imports = { level = "allow", priority = 1 }
 type-complexity = { level = "allow", priority = 1 }
+too-many-arguments = { level = "allow", priority = 1 }
 

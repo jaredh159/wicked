@@ -1,6 +1,6 @@
 use crate::internal::*;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Config {
   pub title_tag_multiplier: usize,
   pub h1_tag_multiplier: usize,

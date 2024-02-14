@@ -1,6 +1,7 @@
 use crate::internal::*;
 
 pub mod images;
+mod parked;
 mod words;
 
 // reqwest docs: https://docs.rs/reqwest/0.10.7/reqwest/
@@ -53,10 +54,14 @@ pub async fn domain_impl(
   http: &HttpClient,
 ) -> DomainResult {
   let url = format!("{prefix}{domain}");
+  log::trace!("begin checking url: {url}");
 
-  let Ok(response) = http.get(&url).send().await else {
-    log::trace!("GET failed `{url}`: http error - UNREACHABLE");
-    return DomainResult::Unreachable;
+  let response = match http.get(&url).send().await {
+    Ok(response) => response,
+    Err(err) => {
+      log::trace!("http error - UNREACHABLE - {err}");
+      return DomainResult::Unreachable;
+    }
   };
 
   if !response.status().is_success() {
@@ -67,10 +72,29 @@ pub async fn domain_impl(
     return DomainResult::Unreachable;
   }
 
-  let Ok(body) = response.text().await else {
-    log::error!("GET  fail`{url}`: error getting response text - UNREACHABLE");
-    return DomainResult::Unreachable;
+  let body = match response.text().await {
+    Ok(body) => body,
+    Err(err) => {
+      log::warn!(
+        "GET fail `{url}`: error getting response text - UNREACHABLE, err={err}"
+      );
+      return DomainResult::Unreachable;
+    }
   };
+
+  if parked::check(domain, &body) {
+    log::debug!("found PARKED: site: {url}");
+    return DomainResult::Parked;
+  }
+
+  if parked::check_lol(&body) {
+    log::info!(" -> possible PARKED: site: {url}");
+    panic!("");
+    // return DomainResult::Parked;
+  }
+
+  // log::debug!("GET success `{url}` body length={}", body.len());
+  // DomainResult::Unreachable
 
   log::trace!("GET success `{url}` body length={}", body.len());
   let content = html::content(&body);
@@ -78,7 +102,7 @@ pub async fn domain_impl(
   let mut result = TestResult::new(prefix);
   result.word_score = words::check(&content, words);
   if result.word_score > 250 {
-    log::info!("site {url} found to be PORN by WORDS check");
+    log::error!("site {url} found to be PORN by WORDS check");
     result.is_porn = true;
     return DomainResult::Tested(result);
   }

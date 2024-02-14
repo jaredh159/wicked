@@ -30,7 +30,8 @@ async fn main() -> Result<()> {
     "exec" => {
       prereqs::check()?;
       let server_proc = check::images::start_server()?;
-      exec::run(Arc::new(Mutex::new(db_client))).await?;
+      let db = Arc::new(Mutex::new(db_client));
+      exec::run(db, &config, &http_client).await?;
       check::images::cleanup(server_proc)?;
     }
     "check-domain" => {
@@ -51,7 +52,7 @@ fn build_http_client() -> HttpClient {
   reqwest::Client::builder()
     .user_agent(USER_AGENT)
     .redirect(reqwest::redirect::Policy::none())
-    .timeout(Duration::from_secs(3))
+    .timeout(Duration::from_secs(4))
     .build()
     .unwrap()
 }
