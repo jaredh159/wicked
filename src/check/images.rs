@@ -28,7 +28,7 @@ pub async fn check(base_url: &str, content: &[html::Content], result: &mut TestR
       Ok(response) => response,
       Err(err) => {
         num_failed += 1;
-        log::warn!("http request to `{url}` failed with error={err}");
+        log::debug!("http request to `{url}` failed with error={err}");
         if num_failed > 10 {
           log::warn!(
             "bailing early from {base_url} image check: too many failed requests"
@@ -50,7 +50,7 @@ pub async fn check(base_url: &str, content: &[html::Content], result: &mut TestR
     let bytes = match response.bytes().await {
       Ok(bytes) => bytes,
       Err(err) => {
-        log::warn!("failed to read bytes from response to `{url}`: {err}");
+        log::debug!("failed to read bytes from response to `{url}`: {err}");
         continue;
       }
     };
@@ -68,7 +68,7 @@ pub async fn check(base_url: &str, content: &[html::Content], result: &mut TestR
       if porn > 0.85 || hentai > 0.85 {
         log::warn!("image found to be PORN: {url}");
         num_porn_imgs += 1;
-      } else if sexy > 0.9 {
+      } else if sexy > 0.95 {
         log::info!("image found to be SEXY: {url}");
         num_sexy_imgs += 1;
       } else {
@@ -138,6 +138,8 @@ pub fn start_server() -> Result<std::process::Child> {
   let bun_bin = std::env::var("BUN_BIN").unwrap();
   let proc = std::process::Command::new(bun_bin)
     .arg("index.ts")
+    .stdout(std::process::Stdio::null())
+    .stderr(std::process::Stdio::null())
     .spawn()?;
   // give time for server to start
   std::thread::sleep(Duration::from_millis(500)); // todo, more for prod

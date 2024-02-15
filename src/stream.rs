@@ -1,24 +1,18 @@
 use crate::internal::*;
 
-pub fn until_completed(
-  required: u32,
-  reached: &AtomicU32,
-) -> impl Stream<Item = ()> + '_ {
-  UntilCompleteStream {
-    iter: UntilComplete { reached, required },
-  }
+pub fn until_completed(shared: shared::Data) -> impl Stream<Item = ()> {
+  UntilCompleteStream { iter: UntilComplete { shared } }
 }
 
-struct UntilComplete<'a> {
-  reached: &'a AtomicU32,
-  required: u32,
+struct UntilComplete {
+  shared: shared::Data,
 }
 
-impl<'a> Iterator for UntilComplete<'a> {
+impl Iterator for UntilComplete {
   type Item = ();
 
   fn next(&mut self) -> Option<Self::Item> {
-    if self.reached.load(Ordering::Relaxed) >= self.required {
+    if self.shared.completed() {
       log::info!("finish until_completed stream");
       return None;
     }
@@ -26,11 +20,11 @@ impl<'a> Iterator for UntilComplete<'a> {
   }
 }
 
-struct UntilCompleteStream<'a> {
-  iter: UntilComplete<'a>,
+struct UntilCompleteStream {
+  iter: UntilComplete,
 }
 
-impl Stream for UntilCompleteStream<'_> {
+impl Stream for UntilCompleteStream {
   type Item = ();
 
   fn poll_next(

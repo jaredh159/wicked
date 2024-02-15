@@ -89,24 +89,8 @@ pub async fn domain_impl(
   }
 
   if parked::check_lol(&body) {
-    println!("\n\n\n\n");
     log::error!("-> possible PARKED: site: {url}");
-    log::error!("-> possible PARKED: site: {url}");
-    log::error!("-> possible PARKED: site: {url}");
-    log::error!("-> possible PARKED: site: {url}");
-    log::error!("-> possible PARKED: site: {url}");
-    log::error!("-> possible PARKED: site: {url}");
-    log::error!("-> possible PARKED: site: {url}");
-    log::error!("-> possible PARKED: site: {url}");
-    log::error!("-> possible PARKED: site: {url}");
-    log::error!("-> possible PARKED: site: {url}");
-    log::error!("-> possible PARKED: site: {url}");
-    println!("\n\n\n\n");
-    // return DomainResult::Parked;
   }
-
-  // log::debug!("GET success `{url}` body length={}", body.len());
-  // DomainResult::Unreachable
 
   log::trace!("GET success `{url}` body length={}", body.len());
   let content = html::content(&body);

@@ -7,10 +7,21 @@ pub async fn run(shared_db: Arc<Mutex<DbClient>>, conf: &Config) -> Result<()> {
   static ATTEMPTED: AtomicU32 = AtomicU32::new(0);
   static REACHED: AtomicU32 = AtomicU32::new(0);
   static PORN: AtomicU32 = AtomicU32::new(0);
-  let porn_sites = Arc::new(Mutex::new(Vec::<String>::new()));
+  static ABORTED: AtomicBool = AtomicBool::new(false);
+
+  let data = shared::Data {
+    attempted: &ATTEMPTED,
+    reached: &REACHED,
+    porn: &PORN,
+    aborted: &ABORTED,
+    sites: Arc::new(Mutex::new(Vec::new())),
+    db: Arc::clone(&shared_db),
+    total: 167_300_740, // todo: pass
+    sample_size: 1000,  // todo: pass
+    config: conf.clone(),
+  };
+
   log::info!("starting exec::run()");
-  let total = 167_300_740; // todo: pass
-  let sample_size: u32 = 1000; // todo: pass
 
   let db = Arc::clone(&shared_db);
   let db = db.lock().await;
@@ -18,37 +29,26 @@ pub async fn run(shared_db: Arc<Mutex<DbClient>>, conf: &Config) -> Result<()> {
   drop(db);
 
   let db_count: u32 = row.get::<_, String>(0).parse().unwrap();
-  ATTEMPTED.store(db_count, Ordering::Relaxed);
+  data.attempted.store(db_count, Ordering::Relaxed);
 
-  let tasks = stream::until_completed(sample_size, &REACHED)
-    .map(|()| {
-      try_check_domain(
-        &ATTEMPTED,
-        &REACHED,
-        &PORN,
-        total,
-        sample_size,
-        Arc::clone(&shared_db),
-        Arc::clone(&porn_sites),
-        conf,
-      )
-    })
-    .buffer_unordered(u32::min(PARALLELISM, sample_size) as usize);
+  let tasks = stream::until_completed(data.clone())
+    .map(|()| try_check_domain(data.clone()))
+    .buffer_unordered(u32::min(PARALLELISM, data.sample_size) as usize);
 
   tasks.collect::<Vec<_>>().await;
-  let final_attempted = ATTEMPTED.load(Ordering::Acquire);
-  let found_porn = PORN.load(Ordering::Acquire);
-  let final_reached = REACHED.load(Ordering::Acquire);
+  let num_attempted = data.attempted.load(Ordering::Acquire);
+  let num_found_porn = data.porn.load(Ordering::Acquire);
+  let num_reached = data.reached.load(Ordering::Acquire);
   log::info!(
     "finished exec::run(), porn: {} ({}%), attempted: {}, reached: {}, {}% unreachable",
-    found_porn,
-    percent(found_porn, final_reached),
-    final_attempted,
-    final_reached,
-    percent(final_attempted - final_reached, final_attempted),
+    num_found_porn,
+    percent(num_found_porn, num_reached),
+    num_attempted,
+    num_reached,
+    percent(num_attempted - num_reached, num_attempted),
   );
 
-  let guard = porn_sites.lock().await;
+  let guard = data.sites.lock().await;
   if !guard.is_empty() {
     println!("porn sites:");
     for site in &*guard {
@@ -58,47 +58,25 @@ pub async fn run(shared_db: Arc<Mutex<DbClient>>, conf: &Config) -> Result<()> {
   Ok(())
 }
 
-fn try_check_domain(
-  attempted: &'static AtomicU32,
-  reached: &'static AtomicU32,
-  found_porn: &'static AtomicU32,
-  total: u32,
-  sample_size: u32,
-  shared_db: Arc<Mutex<DbClient>>,
-  porn_sites: Arc<Mutex<Vec<String>>>,
-  conf: &Config,
-) -> impl Future<Output = Result<()>> {
-  let conf = conf.clone();
+fn try_check_domain(data: shared::Data) -> impl Future<Output = Result<()>> {
+  let conf = data.config.clone();
   async move {
-    let domain = db::random_unchecked_domain(shared_db.clone(), total).await?;
+    let domain = db::random_unchecked_domain(data.db.clone(), data.total).await?;
     log::debug!("start checking domain: {domain}",);
     let result = check::domain(&domain, &conf).await;
-    let updated_attempted = attempted.fetch_add(1, Ordering::Relaxed);
+    data.attempted.fetch_add(1, Ordering::Relaxed);
 
     if let DomainResult::Tested(result) = &result {
-      reached.fetch_add(1, Ordering::Relaxed);
+      data.reached.fetch_add(1, Ordering::Relaxed);
       if result.is_porn {
-        found_porn.fetch_add(1, Ordering::Relaxed);
-        let mut guard = porn_sites.lock().await;
-        guard.push(domain.clone());
+        data.porn.fetch_add(1, Ordering::Relaxed);
+        let mut guard = data.sites.lock().await;
+        guard.push(domain.clone().leak());
       }
     }
 
-    log::info!("finish checking domain: {domain}, result: {:?}", result);
-    let porn = found_porn.load(Ordering::Acquire);
-    let num_reached = reached.load(Ordering::Acquire);
-    log::debug!(
-      "progress: {}/{} ({}%) finished, {}/{} ({}%) porn, {}/{} ({}%) unreachable",
-      num_reached,
-      sample_size,
-      percent(num_reached, sample_size),
-      porn,
-      num_reached,
-      percent(porn, num_reached),
-      updated_attempted - num_reached,
-      updated_attempted,
-      percent(updated_attempted - num_reached, updated_attempted),
-    );
+    log::debug!("finish checking domain: {domain}, result: {:?}", result);
+    data.log_progress().await;
     Ok(())
   }
 }

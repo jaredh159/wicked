@@ -8,7 +8,7 @@ pub use std::fs::File;
 pub use std::io::{self, BufRead};
 pub use std::pin::Pin;
 pub use std::result::Result as StdResult;
-pub use std::sync::atomic::{AtomicU32, Ordering};
+pub use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 pub use std::sync::Arc;
 pub use std::task::{Context, Poll};
 pub use std::time::Duration;
@@ -40,6 +40,9 @@ pub mod html {
 }
 pub mod http {
   pub use crate::http::*;
+}
+pub mod shared {
+  pub use crate::shared::*;
 }
 
 pub mod check {

@@ -7,6 +7,7 @@ mod html;
 mod http;
 mod internal;
 mod prereqs;
+mod shared;
 mod stream;
 
 use internal::*;
