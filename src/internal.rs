@@ -19,6 +19,7 @@ pub use itertools::Itertools;
 pub use log;
 pub use rand::Rng;
 pub use regex::Regex;
+pub use reqwest::redirect;
 pub use reqwest::Client as HttpClient;
 pub use serde::Deserialize;
 pub use tokio::sync::Mutex;
@@ -36,6 +37,9 @@ pub mod stream {
 }
 pub mod html {
   pub use crate::html::*;
+}
+pub mod http {
+  pub use crate::http::*;
 }
 
 pub mod check {

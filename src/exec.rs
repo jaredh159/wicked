@@ -1,18 +1,16 @@
 use crate::internal::*;
 
-const PARALLELISM: u32 = 20;
+// parallelism higher than 10 seems to cause DNS rate limiting...
+const PARALLELISM: u32 = 10;
 
-pub async fn run(
-  shared_db: Arc<Mutex<DbClient>>,
-  conf: &Config,
-  http: &HttpClient,
-) -> Result<()> {
+pub async fn run(shared_db: Arc<Mutex<DbClient>>, conf: &Config) -> Result<()> {
   static ATTEMPTED: AtomicU32 = AtomicU32::new(0);
   static REACHED: AtomicU32 = AtomicU32::new(0);
   static PORN: AtomicU32 = AtomicU32::new(0);
+  let porn_sites = Arc::new(Mutex::new(Vec::<String>::new()));
   log::info!("starting exec::run()");
   let total = 167_300_740; // todo: pass
-  let sample_size: u32 = 60; // todo: pass
+  let sample_size: u32 = 1000; // todo: pass
 
   let db = Arc::clone(&shared_db);
   let db = db.lock().await;
@@ -31,8 +29,8 @@ pub async fn run(
         total,
         sample_size,
         Arc::clone(&shared_db),
+        Arc::clone(&porn_sites),
         conf,
-        http,
       )
     })
     .buffer_unordered(u32::min(PARALLELISM, sample_size) as usize);
@@ -49,6 +47,14 @@ pub async fn run(
     final_reached,
     percent(final_attempted - final_reached, final_attempted),
   );
+
+  let guard = porn_sites.lock().await;
+  if !guard.is_empty() {
+    println!("porn sites:");
+    for site in &*guard {
+      println!(" -> {}", site);
+    }
+  }
   Ok(())
 }
 
@@ -59,21 +65,22 @@ fn try_check_domain(
   total: u32,
   sample_size: u32,
   shared_db: Arc<Mutex<DbClient>>,
+  porn_sites: Arc<Mutex<Vec<String>>>,
   conf: &Config,
-  http: &HttpClient,
 ) -> impl Future<Output = Result<()>> {
-  let http = http.clone();
   let conf = conf.clone();
   async move {
     let domain = db::random_unchecked_domain(shared_db.clone(), total).await?;
     log::debug!("start checking domain: {domain}",);
-    let result = check::domain(&domain, &conf, &http).await;
+    let result = check::domain(&domain, &conf).await;
     let updated_attempted = attempted.fetch_add(1, Ordering::Relaxed);
 
     if let DomainResult::Tested(result) = &result {
       reached.fetch_add(1, Ordering::Relaxed);
       if result.is_porn {
         found_porn.fetch_add(1, Ordering::Relaxed);
+        let mut guard = porn_sites.lock().await;
+        guard.push(domain.clone());
       }
     }
 

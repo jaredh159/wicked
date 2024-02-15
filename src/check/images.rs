@@ -1,11 +1,9 @@
 use crate::internal::*;
 
-pub async fn check(
-  base_url: &str,
-  content: &[html::Content],
-  http: &HttpClient,
-  result: &mut TestResult,
-) {
+pub async fn check(base_url: &str, content: &[html::Content], result: &mut TestResult) {
+  let download_client = http::client(redirect::Policy::limited(2), 4);
+  let classify_client = http::client(redirect::Policy::none(), 2);
+
   let all_srcs = content.iter().filter_map(|c| match c {
     html::Content::ImgSrc(src) => Some(src),
     _ => None,
@@ -21,14 +19,22 @@ pub async fn check(
 
   let mut num_sexy_imgs = 0;
   let mut num_porn_imgs = 0;
+  let mut num_failed = 0;
 
   for url in filtered_srcs.take(50) {
     result.num_images_tested += 1;
 
-    let response = match http.get(url.as_ref()).send().await {
+    let response = match download_client.get(url.as_ref()).send().await {
       Ok(response) => response,
       Err(err) => {
+        num_failed += 1;
         log::warn!("http request to `{url}` failed with error={err}");
+        if num_failed > 10 {
+          log::warn!(
+            "bailing early from {base_url} image check: too many failed requests"
+          );
+          return;
+        }
         continue;
       }
     };
@@ -44,7 +50,7 @@ pub async fn check(
     let bytes = match response.bytes().await {
       Ok(bytes) => bytes,
       Err(err) => {
-        log::error!("failed to read bytes from response to `{url}`: {err}");
+        log::warn!("failed to read bytes from response to `{url}`: {err}");
         continue;
       }
     };
@@ -56,9 +62,11 @@ pub async fn check(
       continue;
     }
 
-    if let Some(Classification { porn, hentai, sexy }) = classify(&filename, http).await {
+    if let Some(Classification { porn, hentai, sexy }) =
+      classify(&filename, &classify_client).await
+    {
       if porn > 0.85 || hentai > 0.85 {
-        log::info!("image found to be PORN: {url}");
+        log::warn!("image found to be PORN: {url}");
         num_porn_imgs += 1;
       } else if sexy > 0.9 {
         log::info!("image found to be SEXY: {url}");

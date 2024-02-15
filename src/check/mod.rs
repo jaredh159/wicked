@@ -35,10 +35,11 @@ pub enum DomainResult {
   Tested(TestResult),
 }
 
-pub async fn domain(domain: &str, conf: &Config, http: &HttpClient) -> DomainResult {
+pub async fn domain(domain: &str, conf: &Config) -> DomainResult {
+  let client = http::client(redirect::Policy::none(), 4);
   let prefixes = ["https://www.", "https://", "http://www.", "http://"];
   for prefix in &prefixes {
-    match domain_impl(domain, prefix, conf, http).await {
+    match domain_impl(domain, prefix, conf, &client).await {
       DomainResult::Unreachable => continue,
       DomainResult::Parked => return DomainResult::Parked,
       DomainResult::Tested(result) => return DomainResult::Tested(result),
@@ -88,8 +89,19 @@ pub async fn domain_impl(
   }
 
   if parked::check_lol(&body) {
-    log::info!(" -> possible PARKED: site: {url}");
-    panic!("");
+    println!("\n\n\n\n");
+    log::error!("-> possible PARKED: site: {url}");
+    log::error!("-> possible PARKED: site: {url}");
+    log::error!("-> possible PARKED: site: {url}");
+    log::error!("-> possible PARKED: site: {url}");
+    log::error!("-> possible PARKED: site: {url}");
+    log::error!("-> possible PARKED: site: {url}");
+    log::error!("-> possible PARKED: site: {url}");
+    log::error!("-> possible PARKED: site: {url}");
+    log::error!("-> possible PARKED: site: {url}");
+    log::error!("-> possible PARKED: site: {url}");
+    log::error!("-> possible PARKED: site: {url}");
+    println!("\n\n\n\n");
     // return DomainResult::Parked;
   }
 
@@ -106,7 +118,7 @@ pub async fn domain_impl(
     result.is_porn = true;
     return DomainResult::Tested(result);
   }
-  images::check(&url, &content, http, &mut result).await;
+  images::check(&url, &content, &mut result).await;
   log::trace!("finished checking {url}, porn={}", result.is_porn);
   DomainResult::Tested(result)
 }

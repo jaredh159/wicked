@@ -14,7 +14,11 @@ pub fn check(domain: &str, html: &str) -> bool {
       "/sedo.com",
       "comp-is-parked",
       "This domain is parked",
+      "Parked, Courtesy of omnis.com</title>",
       "Buy with Epik.com</title>",
+      "domain owner | Epik.com</title>",
+      "on pargitud Radicenteris.</h1>",
+      "content=\"Domain registration and domain parking",
     ];
     for s in &search_strings {
       if head.contains(s) {
@@ -32,6 +36,7 @@ pub fn check(domain: &str, html: &str) -> bool {
   }
   let search_strings = [
     "sedoparking.com",
+    "Domain not available",
     "comp-is-parked",
     "class=\"ParkingPage",
     "Who owns the domain?",
@@ -60,14 +65,12 @@ pub fn check(domain: &str, html: &str) -> bool {
       return true;
     }
   }
-  // if html.contains("domain") && html.contains("is parked") {
-  //   return true;
-  // }
   false
 }
 
 pub fn check_lol(html: &str) -> bool {
-  html.contains("domain") && html.contains("is parked")
+  html.contains("domain")
+    && (html.contains("is parked") || html.contains("omain not available"))
 }
 
 #[cfg(test)]
@@ -87,6 +90,9 @@ mod test {
       ("foo.com", "epik.html", true),
       ("foo.com", "summitjourneys.html", true),
       ("foo.com", "egress.html", true),
+      ("foo.com", "strato.html", true),
+      ("aquariusleggings.com", "leggings.html", true),
+      ("ravintolauula.com", "ravintolauula.html", true),
       ("loco-capital.com", "loco-capital.html", true),
       ("danielatraub.com", "danielatraub.html", true),
       ("indocinrx.com", "indocinrx.html", true),

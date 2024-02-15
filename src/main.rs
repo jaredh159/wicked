@@ -4,6 +4,7 @@ mod config;
 mod db;
 mod exec;
 mod html;
+mod http;
 mod internal;
 mod prereqs;
 mod stream;
@@ -22,7 +23,6 @@ async fn main() -> Result<()> {
     .expect("missing required [cmd] arg (bootstrap|exec|check-domain)");
 
   let db_client = db::connect().await?;
-  let http_client = build_http_client();
   let config = config::load();
 
   match cmd.as_str() {
@@ -31,14 +31,14 @@ async fn main() -> Result<()> {
       prereqs::check()?;
       let server_proc = check::images::start_server()?;
       let db = Arc::new(Mutex::new(db_client));
-      exec::run(db, &config, &http_client).await?;
+      exec::run(db, &config).await?;
       check::images::cleanup(server_proc)?;
     }
     "check-domain" => {
       prereqs::check()?;
       let domain = args.next().expect("missing required [domain] arg");
       let server_proc = check::images::start_server()?;
-      let result = check::domain(&domain, &config, &http_client).await;
+      let result = check::domain(&domain, &config).await;
       check::images::cleanup(server_proc)?;
       println!("\nresult: {result}");
     }
@@ -47,14 +47,3 @@ async fn main() -> Result<()> {
 
   Ok(())
 }
-
-fn build_http_client() -> HttpClient {
-  reqwest::Client::builder()
-    .user_agent(USER_AGENT)
-    .redirect(reqwest::redirect::Policy::none())
-    .timeout(Duration::from_secs(4))
-    .build()
-    .unwrap()
-}
-
-const USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
