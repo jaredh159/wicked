@@ -55,6 +55,11 @@ pub async fn check(base_url: &str, content: &[html::Content], result: &mut TestR
       }
     };
 
+    if bytes.len() < 1_024 {
+      log::trace!("image {url} is too small to classify ({}B)", bytes.len());
+      continue;
+    }
+
     let filename = format!("{}.dat", Uuid::new_v4());
     let filepath = format!("images/{filename}");
     if std::fs::write(&filepath, bytes).is_err() {
@@ -66,17 +71,17 @@ pub async fn check(base_url: &str, content: &[html::Content], result: &mut TestR
       classify(&filename, &classify_client).await
     {
       if porn > 0.85 || hentai > 0.85 {
-        log::warn!("image found to be PORN: {url}");
+        log::debug!("image found to be PORN: {url}");
         num_porn_imgs += 1;
       } else if sexy > 0.95 {
-        log::info!("image found to be SEXY: {url}");
+        log::debug!("image found to be SEXY: {url}");
         num_sexy_imgs += 1;
       } else {
         log::trace!("image found to be SAFE: {url}");
       }
-      if num_porn_imgs > 1
-        || num_sexy_imgs > 4
-        || (num_porn_imgs == 1 && num_sexy_imgs > 2)
+      if num_porn_imgs > 3
+        || num_sexy_imgs > 6
+        || (num_porn_imgs > 1 && num_sexy_imgs > 3)
       {
         log::error!("site found to be PORN by IMAGE check: {base_url}");
         result.is_porn = true;

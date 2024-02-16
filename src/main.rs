@@ -9,6 +9,7 @@ mod internal;
 mod prereqs;
 mod shared;
 mod stream;
+mod utils;
 
 use internal::*;
 

@@ -76,9 +76,7 @@ pub async fn domain_impl(
   let body = match response.text().await {
     Ok(body) => body,
     Err(err) => {
-      log::warn!(
-        "GET fail `{url}`: error getting response text - UNREACHABLE, err={err}"
-      );
+      log::debug!("GET fail `{url}`: no response text - UNREACHABLE, err={err}");
       return DomainResult::Unreachable;
     }
   };

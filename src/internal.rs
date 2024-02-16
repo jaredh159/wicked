@@ -44,6 +44,9 @@ pub mod http {
 pub mod shared {
   pub use crate::shared::*;
 }
+pub mod utils {
+  pub use crate::utils::*;
+}
 
 pub mod check {
   pub use crate::check::*;
