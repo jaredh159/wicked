@@ -15,8 +15,6 @@ use internal::*;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-  dotenv::dotenv().ok();
-
   env_logger::init_from_env(Env::default().default_filter_or("info"));
 
   let mut args = std::env::args().skip(1);
@@ -24,25 +22,25 @@ async fn main() -> Result<()> {
     .next()
     .expect("missing required [cmd] arg (bootstrap|exec|check-domain)");
 
-  let db_client = db::connect().await?;
-  let config = config::load();
+  let config = config::load()?;
+  let db_client = db::connect(&config.database_url).await?;
 
   match cmd.as_str() {
-    "bootstrap" => bootstrap::run(&db_client).await?,
+    "bootstrap" => bootstrap::run(&db_client, &config).await?,
     "exec" => {
-      prereqs::check()?;
-      let server_proc = check::images::start_server()?;
+      prereqs::check(&config)?;
+      let server_proc = check::images::start_server(&config)?;
       let db = Arc::new(Mutex::new(db_client));
       exec::run(db, &config).await?;
       check::images::cleanup(server_proc)?;
     }
     "check-domain" => {
-      prereqs::check()?;
+      prereqs::check(&config)?;
       let domain = args.next().expect("missing required [domain] arg");
-      let server_proc = check::images::start_server()?;
+      let server_proc = check::images::start_server(&config)?;
       let result = check::domain(&domain, &config).await;
       check::images::cleanup(server_proc)?;
-      println!("\nresult: {result}");
+      log::info!("result: {result}");
     }
     _ => panic!("unknown command: `{cmd}`"),
   }

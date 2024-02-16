@@ -1,54 +1,28 @@
 use crate::internal::*;
 
-// parallelism higher than 10 seems to cause DNS rate limiting...
-const PARALLELISM: u32 = 8;
-
 pub async fn run(shared_db: Arc<Mutex<DbClient>>, conf: &Config) -> Result<()> {
   let sample_size = 1000;
   log::info!(
     "starting exec::run(), sample_size: {}, parallelism: {}",
-    sample_size,
-    PARALLELISM
+    conf.sample_size,
+    conf.parallelism
   );
+
   let data = shared::Data::new(
-    167_300_740,
-    sample_size, // todo: pass
+    match conf.total_num_domains {
+      Some(num) => num,
+      None => domain_count(shared_db.clone()).await,
+    },
     conf.clone(),
     Arc::clone(&shared_db),
   );
 
-  // let db = Arc::clone(&shared_db);
-  // let db = db.lock().await;
-  // let row = db.query_one(QUERY_COUNT_COMPLETE, &[]).await?;
-  // drop(db);
-
-  // let db_count: u32 = row.get::<_, String>(0).parse().unwrap();
-  // data.attempted.store(db_count, Ordering::Relaxed);
-
-  let tasks = stream::until_completed(data.clone())
+  let futs = stream::until_completed(data.clone())
     .map(|()| process_domain(data.clone()))
-    .buffer_unordered(u32::min(PARALLELISM, data.sample_size) as usize);
+    .buffer_unordered(conf.parallelism as usize);
 
-  tasks.collect::<Vec<_>>().await;
-  let num_attempted = data.attempted.load(Ordering::Acquire);
-  let num_found_porn = data.porn.load(Ordering::Acquire);
-  let num_reached = data.reached.load(Ordering::Acquire);
-  log::info!(
-    "finished exec::run(), porn: {} ({}%), attempted: {}, reached: {}, {}% unreachable",
-    num_found_porn,
-    utils::percent_str(num_found_porn, num_reached),
-    num_attempted,
-    num_reached,
-    utils::percent_str(num_attempted - num_reached, num_attempted),
-  );
-
-  let guard = data.sites.lock().await;
-  if !guard.is_empty() {
-    println!("porn sites:");
-    for site in &*guard {
-      println!(" -> {}", site);
-    }
-  }
+  futs.collect::<Vec<_>>().await;
+  log_complete(&data).await;
   Ok(())
 }
 
@@ -79,7 +53,43 @@ fn process_domain(data: shared::Data) -> impl Future<Output = Result<()>> {
   }
 }
 
+async fn domain_count(db: Arc<Mutex<DbClient>>) -> u32 {
+  log::info!("start get db domain count, bypass w/ `total_num_domains` in config");
+  let row = db
+    .lock()
+    .await
+    .query_one(QUERY_COUNT_DOMAINS, &[])
+    .await
+    .unwrap();
+  let count = row.get::<_, String>(0).parse().unwrap();
+  log::info!("finish get db domain count: {count}");
+  count
+}
+
+async fn log_complete(data: &shared::Data) {
+  let num_attempted = data.attempted.load(Ordering::Acquire);
+  let num_found_porn = data.porn.load(Ordering::Acquire);
+  let num_reached = data.reached.load(Ordering::Acquire);
+  log::info!(
+    "finished exec::run(), porn: {} ({}%), attempted: {}, reached: {}, {}% unreachable",
+    num_found_porn,
+    utils::percent_str(num_found_porn, num_reached),
+    num_attempted,
+    num_reached,
+    utils::percent_str(num_attempted - num_reached, num_attempted),
+  );
+
+  let guard = data.sites.lock().await;
+  if !guard.is_empty() {
+    log::info!("porn sites:");
+    for site in &*guard {
+      log::info!(" -> {}", site);
+    }
+  }
+}
+
 static SELECT_RANDOM: &str = "SELECT domain FROM domains WHERE id =";
 static SELECT_CHECKED: &str = "SELECT id FROM checked WHERE domain =";
+static QUERY_COUNT_DOMAINS: &str = "SELECT COUNT(*)::text FROM domains";
 static QUERY_COUNT_COMPLETE: &str =
   "SELECT COUNT(*)::text FROM checked WHERE status != 'unreachable'";

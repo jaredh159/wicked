@@ -1,16 +1,15 @@
 use crate::internal::*;
 
 pub fn check(content: &[html::Content], conf: &Config) -> usize {
+  let words = &conf.words;
   content.iter().fold(0, |total, c| {
     total
       + match c {
-        html::Content::Title(s) => weighted(s, &conf.words, conf.title_tag_multiplier),
-        html::Content::H1(s) => weighted(s, &conf.words, conf.h1_tag_multiplier),
-        html::Content::Text(s) => weighted(s, &conf.words, conf.other_text_multiplier),
-        html::Content::ImgAlt(s) => weighted(s, &conf.words, conf.img_tag_alt_multiplier),
-        html::Content::LinkTitle(s) => {
-          weighted(s, &conf.words, conf.link_title_multiplier)
-        }
+        html::Content::Title(s) => weighted(s, words, conf.title_tag_weight),
+        html::Content::H1(s) => weighted(s, words, conf.h1_tag_weight),
+        html::Content::Text(s) => weighted(s, words, conf.other_text_weight),
+        html::Content::ImgAlt(s) => weighted(s, words, conf.img_tag_alt_weight),
+        html::Content::LinkTitle(s) => weighted(s, words, conf.link_title_weight),
         html::Content::ImgSrc(_) => 0,
       }
   })
@@ -81,12 +80,13 @@ mod test {
       let actual = check(
         &content,
         &Config {
-          title_tag_multiplier: 5,
-          h1_tag_multiplier: 2,
-          img_tag_alt_multiplier: 2,
-          other_text_multiplier: 1,
-          link_title_multiplier: 1,
+          title_tag_weight: 5,
+          h1_tag_weight: 2,
+          img_tag_alt_weight: 2,
+          other_text_weight: 1,
+          link_title_weight: 1,
           words: crate::config::map_regex(spec),
+          ..Config::default()
         },
       );
       assert_eq!(actual, expected);

@@ -5,6 +5,7 @@ pub fn check(domain: &str, html: &str) -> bool {
   {
     return true;
   }
+
   if html.len() > 6000 {
     let head = &html.chars().take(2000).collect::<String>();
     let search_strings = [
@@ -34,6 +35,7 @@ pub fn check(domain: &str, html: &str) -> bool {
       return false;
     }
   }
+
   let search_strings = [
     "sedoparking.com",
     "Domain not available",
@@ -66,11 +68,6 @@ pub fn check(domain: &str, html: &str) -> bool {
     }
   }
   false
-}
-
-pub fn check_lol(html: &str) -> bool {
-  html.contains("domain")
-    && (html.contains("is parked") || html.contains("omain not available"))
 }
 
 #[cfg(test)]

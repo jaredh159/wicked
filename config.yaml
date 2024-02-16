@@ -1,0 +1,74 @@
+#######################
+# 👍 Wicked Settings 👍
+#######################
+
+# NB: it is recommended you NOT edit this file
+# instead, create `config.local.yaml` (which is git-ignored)
+# and enter your secrets and configuration overrides
+
+# postgres database url
+database_url: 'postgresql://postgres:@127.0.0.1:5432/your_db_name'
+
+# unzipped file, obtained from https://czds.icann.org
+raw_domains_filepath: '/path/to/unzipped/com.txt'
+
+# absolute path to bun binary, for image classification server
+# see: https://bun.sh/docs/installation
+bun_bin_path: '/abs/path/to/bun'
+
+# how many rust async tasks to run in parallel
+# NB: it is not recommended to increase this too much as
+# it is very easy on a fast computer to hit DNS rate limiting
+parallelism: 10
+
+# how many sites to check before quitting
+# NB: sites are considered towards the sample size if reachable and not parked
+sample_size: 1000
+
+# how much weight to give to text appearing in html <title> tag
+title_tag_weight: 5
+
+# how much weight to give to text appearing in html <h1> tags
+h1_tag_weight: 3
+
+# how much weight to give to text appearing in html <img> alt attribute
+img_tag_alt_weight: 3
+
+# how much weight to give to text appearing in html <a> title attribute
+link_title_weight: 1
+
+# how much weight to give to normal (non-tag) html text
+other_text_weight: 1
+
+# threshold from counting weighted words when site is considered porn
+word_score_threshold: 125
+
+# thresholds for trusting image ML classification
+# NB: images classifed porn OR hentai are both considered porn
+# see: https://github.com/infinitered/nsfwjs
+porn_image_confidence: 0.85
+hentai_image_confidence: 0.85
+sexy_image_confidence: 0.95
+
+# number of counted images before site categorized as porn by image check
+# NB: image ML classification does experience false positives
+# see: https://github.com/infinitered/nsfwjs
+num_porn_images_threshold: 3
+num_sexy_images_threshold: 6
+
+# time to wait for the image classification server to start
+# before testing domains (milliseconds)
+image_server_startup_wait_ms: 1000
+
+# (OPTIONAL): setting this number allows skipping counting the db
+# rows, which can take several seconds. the number should be exactly
+# how many rows are were inserted into the `domains` table by bootstrap
+# total_num_domains: 167300740
+
+# words to consider as being correlated with porn sites
+#  - words should be all lowercase, matching is case INSENSITIVE
+#  - words ONLY match if complete, e.g. "bob" would not match "bobcat"
+#  - the number is the relative weight or importance (must be 1-10)
+words:
+  - ['verybadword', 1]
+  # - ['or phrase', 1]

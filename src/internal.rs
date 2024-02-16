@@ -21,7 +21,6 @@ pub use rand::Rng;
 pub use regex::Regex;
 pub use reqwest::redirect;
 pub use reqwest::Client as HttpClient;
-pub use serde::Deserialize;
 pub use tokio::sync::Mutex;
 pub use tokio_postgres::{Client as DbClient, NoTls, Statement};
 pub use uuid::Uuid;

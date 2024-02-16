@@ -3,15 +3,12 @@ use std::process::{Command, Stdio};
 
 use crate::internal::*;
 
-pub fn check() -> Result<()> {
-  check_bun_version()
+pub fn check(config: &Config) -> Result<()> {
+  check_bun_version(config)
 }
 
-fn check_bun_version() -> Result<()> {
-  let bun_bin = std::env::var("BUN_BIN")
-    .expect("missing required env var: `BUN_BIN`, see `.env.example`");
-
-  let bun_version = Command::new(bun_bin)
+fn check_bun_version(config: &Config) -> Result<()> {
+  let bun_version = Command::new(&config.bun_bin_path)
     .arg("--version")
     .stdout(Stdio::piped())
     .spawn()?;

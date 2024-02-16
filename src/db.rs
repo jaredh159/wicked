@@ -51,9 +51,8 @@ pub async fn insert_result(
   Ok(())
 }
 
-pub async fn connect() -> Result<DbClient> {
-  let url = std::env::var("DATABASE_URL").unwrap();
-  let (client, connection) = tokio_postgres::connect(url.as_ref(), NoTls).await?;
+pub async fn connect(db_url: &str) -> Result<DbClient> {
+  let (client, connection) = tokio_postgres::connect(db_url, NoTls).await?;
   tokio::spawn(async move {
     if let Err(error) = connection.await {
       log::error!("postgres connection error: {error}");

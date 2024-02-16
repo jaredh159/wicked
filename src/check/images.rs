@@ -1,6 +1,11 @@
 use crate::internal::*;
 
-pub async fn check(base_url: &str, content: &[html::Content], result: &mut TestResult) {
+pub async fn check(
+  base_url: &str,
+  content: &[html::Content],
+  config: &Config,
+  result: &mut TestResult,
+) {
   let download_client = http::client(redirect::Policy::limited(2), 4);
   let classify_client = http::client(redirect::Policy::none(), 2);
 
@@ -70,18 +75,18 @@ pub async fn check(base_url: &str, content: &[html::Content], result: &mut TestR
     if let Some(Classification { porn, hentai, sexy }) =
       classify(&filename, &classify_client).await
     {
-      if porn > 0.85 || hentai > 0.85 {
+      if porn > config.porn_image_confidence || hentai > config.hentai_image_confidence {
         log::debug!("image found to be PORN: {url}");
         num_porn_imgs += 1;
-      } else if sexy > 0.95 {
+      } else if sexy > config.sexy_image_confidence {
         log::debug!("image found to be SEXY: {url}");
         num_sexy_imgs += 1;
       } else {
         log::trace!("image found to be SAFE: {url}");
       }
-      if num_porn_imgs > 3
-        || num_sexy_imgs > 6
-        || (num_porn_imgs > 1 && num_sexy_imgs > 3)
+      if num_porn_imgs > config.num_porn_images_threshold
+        || num_sexy_imgs > config.num_sexy_images_threshold
+        || (num_porn_imgs + num_sexy_imgs > config.num_sexy_images_threshold)
       {
         log::error!("site found to be PORN by IMAGE check: {base_url}");
         result.is_porn = true;
@@ -96,9 +101,12 @@ pub async fn check(base_url: &str, content: &[html::Content], result: &mut TestR
 
 async fn classify(filename: &str, http: &HttpClient) -> Option<Classification> {
   let url = format!("http://localhost:8484/{}", filename);
-  let Ok(response) = http.get(&url).send().await else {
-    log::error!("http request to `{url}` failed with error");
-    return None;
+  let response = match http.get(&url).send().await {
+    Ok(response) => response,
+    Err(err) => {
+      log::error!("http request to `{url}` failed with error={err}");
+      return None;
+    }
   };
 
   if !response.status().is_success() {
@@ -117,11 +125,11 @@ async fn classify(filename: &str, http: &HttpClient) -> Option<Classification> {
   }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 struct Classification {
-  porn: f64,
-  hentai: f64,
-  sexy: f64,
+  porn: f32,
+  hentai: f32,
+  sexy: f32,
 }
 
 fn absolute_url<'a>(base_url: &str, src: &'a str) -> Cow<'a, str> {
@@ -139,15 +147,14 @@ fn absolute_url<'a>(base_url: &str, src: &'a str) -> Cow<'a, str> {
   }
 }
 
-pub fn start_server() -> Result<std::process::Child> {
-  let bun_bin = std::env::var("BUN_BIN").unwrap();
-  let proc = std::process::Command::new(bun_bin)
+pub fn start_server(config: &Config) -> Result<std::process::Child> {
+  let proc = std::process::Command::new(&config.bun_bin_path)
     .arg("index.ts")
     .stdout(std::process::Stdio::null())
     .stderr(std::process::Stdio::null())
     .spawn()?;
   // give time for server to start
-  std::thread::sleep(Duration::from_millis(500)); // todo, more for prod
+  std::thread::sleep(Duration::from_millis(config.image_server_startup_wait_ms));
   Ok(proc)
 }
 

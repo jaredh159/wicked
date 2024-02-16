@@ -2,6 +2,6 @@
 /target
 /images/*.dat
 .env
-words.json
+config.local.yaml
 node_modules
 

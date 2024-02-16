@@ -4,9 +4,6 @@ pub mod images;
 mod parked;
 mod words;
 
-// reqwest docs: https://docs.rs/reqwest/0.10.7/reqwest/
-// async process: https://docs.rs/async-process/latest/async_process/struct.Command.html
-
 #[derive(Debug)]
 pub struct TestResult {
   pub is_porn: bool,
@@ -51,7 +48,7 @@ pub async fn domain(domain: &str, conf: &Config) -> DomainResult {
 pub async fn domain_impl(
   domain: &str,
   prefix: &str,
-  words: &Config,
+  config: &Config,
   http: &HttpClient,
 ) -> DomainResult {
   let url = format!("{prefix}{domain}");
@@ -86,21 +83,18 @@ pub async fn domain_impl(
     return DomainResult::Parked;
   }
 
-  if parked::check_lol(&body) {
-    log::error!("-> possible PARKED: site: {url}");
-  }
-
   log::trace!("GET success `{url}` body length={}", body.len());
-  let content = html::content(&body);
-
   let mut result = TestResult::new(prefix);
-  result.word_score = words::check(&content, words);
-  if result.word_score > 250 {
+  let content = html::content(&body);
+  result.word_score = words::check(&content, config);
+
+  if result.word_score > config.word_score_threshold {
     log::error!("site {url} found to be PORN by WORDS check");
     result.is_porn = true;
     return DomainResult::Tested(result);
   }
-  images::check(&url, &content, &mut result).await;
+
+  images::check(&url, &content, config, &mut result).await;
   log::trace!("finished checking {url}, porn={}", result.is_porn);
   DomainResult::Tested(result)
 }

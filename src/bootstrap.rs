@@ -1,6 +1,6 @@
 use crate::internal::*;
 
-pub async fn run(db: &DbClient) -> Result<()> {
+pub async fn run(db: &DbClient, config: &Config) -> Result<()> {
   log::info!("starting database bootstrap");
   db.execute(DROP_DOMAINS_TABLE_SQL, &[]).await?;
   db.execute(CREATE_DOMAINS_TABLE_SQL, &[]).await?;
@@ -9,7 +9,7 @@ pub async fn run(db: &DbClient) -> Result<()> {
 
   let fullsize_insert = chunk_stmt(CHUNK_SIZE, db).await?;
   let mut count = 0;
-  let domain_iter = raw_domains_iter();
+  let domain_iter = raw_domains_iter(&config.raw_domains_filepath);
   for chunk in &domain_iter.into_iter().chunks(CHUNK_SIZE) {
     let params = chunk.collect::<Vec<String>>();
     if params.len() < CHUNK_SIZE {
@@ -41,10 +41,8 @@ async fn chunk_stmt(size: usize, db: &DbClient) -> Result<Statement> {
   db.prepare(&sql).await.map_err(Into::into)
 }
 
-fn raw_domains_iter() -> impl Iterator<Item = String> {
-  let filepath = std::env::var("RAW_DOMAINS_FILEPATH")
-    .expect("missing required env var: `RAW_DOMAINS_FILEPATH`");
-  let file = File::open(filepath).unwrap();
+fn raw_domains_iter(raw_domains_filepath: &str) -> impl Iterator<Item = String> {
+  let file = File::open(raw_domains_filepath).unwrap();
   let lines = io::BufReader::new(file).lines();
   lines
     .into_iter()

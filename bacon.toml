@@ -26,7 +26,7 @@ need_stdout = true
 [jobs.domain-safe]
 command = [
   "cargo", "run", "--color", "always",
-  "--", "check-domain", "friendslibrary.com"
+  "--", "check-domain", "pbskids.org"
 ]
 need_stdout = true
 allow_warnings = true

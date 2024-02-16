@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-dotenv = "0.15.0"
 futures = "0.3.30"
 html5ever = "0.26.0"
 itertools = "0.12.0"
@@ -20,6 +19,7 @@ semver = "1.0.21"
 uuid = { version = "1.6.1", features = ["v4"] }
 log = "0.4.20"
 env_logger = "0.11.1"
+config = "0.14.0"
 
 [lints.rust]
 dead-code = "allow"

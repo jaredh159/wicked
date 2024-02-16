@@ -14,12 +14,7 @@ pub struct Data {
 }
 
 impl Data {
-  pub fn new(
-    total: u32,
-    sample_size: u32,
-    config: Config,
-    db: Arc<Mutex<DbClient>>,
-  ) -> Self {
+  pub fn new(total: u32, config: Config, db: Arc<Mutex<DbClient>>) -> Self {
     static ATTEMPTED: AtomicU32 = AtomicU32::new(0);
     static REACHED: AtomicU32 = AtomicU32::new(0);
     static PORN: AtomicU32 = AtomicU32::new(0);
@@ -32,7 +27,7 @@ impl Data {
       sites: Arc::new(Mutex::new(Vec::new())),
       db,
       total,
-      sample_size,
+      sample_size: config.sample_size,
       config,
     }
   }
