@@ -1,7 +1,6 @@
 use crate::internal::*;
 
 pub async fn run(shared_db: Arc<Mutex<DbClient>>, conf: &Config) -> Result<()> {
-  let sample_size = 1000;
   log::info!(
     "starting exec::run(), sample_size: {}, parallelism: {}",
     conf.sample_size,
